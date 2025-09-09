@@ -56,12 +56,15 @@ conda activate pyskl
 pip install -e .
 ```
 
-## Installation Python 3.10
+## Installation Python 3.10 (recommended)
 ```shell
 git clone https://github.com/kennymckormick/pyskl.git
 cd pyskl
 conda env create -f pyskl_310.yaml
 conda activate pyskl
+# comment the line 813 raise RuntimeError(CUDA_MISMATCH_MESSAGE.format(cuda_str_version, torch.version.cuda))
+# in ~/miniforge3/envs/pyskl_310/lib/python3.10/site-packages/torch/utils/cpp_extension.py
+conda env update -n pyskl_310 -f pyskl_310.yaml
 pip install -e .
 ```
 

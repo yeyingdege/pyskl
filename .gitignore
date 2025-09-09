@@ -123,6 +123,7 @@ pyskl/tools/*
 pyskl/.mim
 .VScodeCounter
 tmp/*
+output
 
 examples/extract_diving48_skeleton/*json
 examples/extract_diving48_skeleton/*list

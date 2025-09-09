@@ -106,7 +106,7 @@ blow nose
 hit other person with something
 wield knife towards other person
 knock over other person (hit with body)
-grab other person’s stuff
+grab other person's stuff
 shoot at other person with a gun
 step on foot
 high-five

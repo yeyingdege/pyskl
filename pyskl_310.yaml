@@ -80,7 +80,7 @@ dependencies:
     - chumpy==0.70
     - cycler==0.11.0
     - cython==0.29.34
-    - decorator==5.1.1
+    - decorator
     - decord==0.6.0
     - fonttools==4.39.0
     - fvcore==0.1.5.post20221221
@@ -96,7 +96,7 @@ dependencies:
     - mmcv-full==1.7.0
     - mmdet==2.25.1
     - mmpose==0.29.0
-    - moviepy==1.0.3
+    - moviepy
     - msgpack==1.0.4
     - msgpack-numpy==0.4.8
     - munkres==1.1.4
@@ -124,6 +124,7 @@ dependencies:
     - traitlets==5.9.0
     - typing-extensions==4.5.0
     - urllib3==1.26.15
+    - ultralytics
     - wcwidth==0.2.6
     - xtcocotools==1.13
     - yacs==0.1.8

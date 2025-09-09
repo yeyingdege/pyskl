@@ -160,8 +160,8 @@ def inference_recognizer(model, video, outputs=None, as_tensor=True, **kwargs):
                 test_pipeline[i] = dict(type='RawFrameDecode')
 
     test_pipeline = Compose(test_pipeline)
-    data = test_pipeline(data)
-    data = collate([data], samples_per_gpu=1)
+    data = test_pipeline(data) # [1, 2, F, J, 3]
+    data = collate([data], samples_per_gpu=1) # [1, 1, 2, F, J, 3]
 
     if next(model.parameters()).is_cuda:
         # scatter to specified GPU

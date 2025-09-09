@@ -1,7 +1,7 @@
 import copy as cp
 import cv2
 import matplotlib.pyplot as plt
-import moviepy.editor as mpy
+import moviepy as mpy
 import mpl_toolkits.mplot3d.axes3d as p3
 import numpy as np
 from matplotlib.animation import FuncAnimation

@@ -159,7 +159,7 @@ def get_video_info_opencv(video_path):
         'total_frames': frame_count,
         'width': width,
         'height': height,
-        'duration_seconds': duration
+        'duration_seconds': round(duration, 1)
     }
 
 
@@ -257,9 +257,15 @@ def analyze_video_data(video_list):
         
         "total_frames_stats": get_stats(total_frames_list, "total_frames"),
         
-        "fps_stats": get_stats(fps_list, "fps"),
+        "fps_stats": {
+            **get_stats(fps_list, "fps"),
+            "fps_counter": dict(Counter(fps_list))
+            },
         
-        "duration_stats": get_stats(duration_list, "duration"),
+        "duration_stats": {
+            **get_stats(duration_list, "duration"),
+            "duration_counter": dict(Counter(duration_list))
+            },
         
         "resolution_stats": {
             **get_stats(width_list, "width"),
@@ -313,6 +319,9 @@ def print_analysis(results):
     print(f"  Range: {fps['fps_min']} - {fps['fps_max']}")
     print(f"  Mean: {fps['fps_mean']}")
     print(f"  Median: {fps['fps_median']}")
+    print(f"  FPS counter:")
+    for ff, count in sorted(fps['fps_counter'].items(), key=lambda x: x[0]):
+        print(f"    '{ff}': {count} videos")
     
     # Duration Statistics
     print("\n⏱️  DURATION STATISTICS:")
@@ -321,6 +330,9 @@ def print_analysis(results):
     print(f"  Mean: {duration['duration_mean']:.2f}s")
     print(f"  Median: {duration['duration_median']:.2f}s")
     print(f"  Total Duration: {duration['duration_sum']:.2f}s ({duration['duration_sum']/60:.1f} minutes)")
+    print(f"  Duration counter:")
+    for dur, count in sorted(duration['duration_counter'].items(), key=lambda x: x[0]):
+        print(f"    '{dur} s': {count} videos")
     
     # Resolution Statistics
     print("\n📺 RESOLUTION STATISTICS:")

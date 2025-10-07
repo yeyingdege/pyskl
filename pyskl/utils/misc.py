@@ -4,6 +4,7 @@ import hashlib
 import logging
 import multiprocessing as mp
 import numpy as np
+import random
 import os
 import cv2
 import os.path as osp
@@ -362,3 +363,39 @@ def print_analysis(results):
     print("\n  Videos Per Label:")
     for label, count in sorted(labels['videos_per_label'].items(), key=lambda x: x[1], reverse=True):
         print(f"    '{label}': appears in {count} videos")
+
+
+def filter_by_action(video_infos, keep_labels=['fall', 'hit', 'run', 'throw', 'kick']):
+    new_video_infos = []
+    for video_info in video_infos:
+        coarse_labels = video_info['coarse_labels']
+        if any(lbl in keep_labels for lbl in coarse_labels):
+            new_video_infos.append(video_info)
+    return new_video_infos
+
+
+def random_assign_videos(video_dir="data/DTC/AI-videos-selective-Sep30", 
+                         keep_labels=['fall', 'hit', 'run', 'throw', 'kick'], 
+                         save_file='output/assigned_videos.csv',
+                         persons=[], seed=0):
+    video_infos = load_video_info(dir_path=video_dir)
+    video_infos = filter_by_action(video_infos, keep_labels=keep_labels)
+
+    random.seed(seed)
+    random.shuffle(video_infos)
+
+    video_files = [info['filename'] for info in video_infos]
+    full_paths = [info['frame_dir'].replace('data/DTC/', '') for info in video_infos]
+    total = len(video_files)
+    idxs = np.array_split(np.arange(total), len(persons))
+    # assigned = {persons[i]: video_files[idxs[i][0]:idxs[i][-1]+1] for i in range(len(persons))}
+
+    assigned_list = [['filename', 'fullpath', 'assigned_to']]
+    for person, idx in zip(persons, idxs):
+        for i in idx:
+            assigned_list.append([video_files[i], full_paths[i], person])
+    # save assigned video list into csv
+    with open(save_file, 'w') as f:
+        for row in assigned_list:
+            f.write(','.join(row) + '\n')
+    print("Saved assigned video list into", save_file)

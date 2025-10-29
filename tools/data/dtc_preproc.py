@@ -51,9 +51,6 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10):
             label_text = action_ann['label'] # list
             start_frame = action_ann['start_frame']
             end_frame = action_ann['end_frame']
-            total_frames = end_frame - start_frame + 1
-            if total_frames < frame_thres:
-                continue
             # truncate keypoints, keypoint_score, bbox
             assert len(label_text) == 1, "Only single-label supported"
             emulated_filename = f"{filename[:-4]}_pid{person_id}_act{i}_{start_frame}_{end_frame}"
@@ -65,9 +62,12 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10):
                 'modality': 'Pose',
                 'keypoint': np.expand_dims(keypoints[start_frame:end_frame+1, :, :], axis=0), # (1, T, K, 3)
                 'keypoint_score': np.expand_dims(keypoint_score[start_frame:end_frame+1, :], axis=0), # (1, T, K)
-                'label': label_to_id.get(label_text[0], 0),
-                'total_frames': total_frames
+                'label': label_to_id.get(label_text[0], 0)
             }
+            ann_dict['total_frames'] = ann_dict['keypoint'].shape[1]
+            if ann_dict['total_frames'] < frame_thres:
+                continue
+            # assert ann_dict['keypoint'].shape[1] == total_frames, "Keypoint length mismatch"
             new_anns.append(ann_dict)
             ids.append(emulated_filename)
     return new_anns, ids

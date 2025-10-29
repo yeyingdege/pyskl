@@ -1,0 +1,7 @@
+others
+fall
+hit
+kick
+run
+throw
+sit

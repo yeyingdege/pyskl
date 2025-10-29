@@ -5,6 +5,7 @@ import logging
 import multiprocessing as mp
 import numpy as np
 import random
+import json
 import os
 import cv2
 import os.path as osp
@@ -241,7 +242,12 @@ def analyze_video_data(video_list):
         height_list.append(video.get('height', 0))
         
         # Handle labels
-        labels = video.get('coarse_labels', [])
+        if 'label' in video:
+            labels = video.get('label', [])
+            if isinstance(labels, int):
+                labels = [labels]
+        else:
+            labels = video.get('coarse_labels', [])
         all_labels.extend(labels)
         label_combinations.append(tuple(sorted(labels)))  # Sort for consistent comparison
         
@@ -273,9 +279,11 @@ def analyze_video_data(video_list):
             **get_stats(height_list, "height"),
             "unique_resolutions": list(set(zip(width_list, height_list))),
             "resolution_counts": dict(Counter(zip(width_list, height_list)))
-        },
-        
-        "label_analysis": {
+        }
+    }
+
+    try:
+        results["label_analysis"] = {
             "total_label_instances": len(all_labels),
             "unique_labels": list(set(all_labels)),
             "label_frequency": dict(Counter(all_labels)),
@@ -286,7 +294,18 @@ def analyze_video_data(video_list):
                 for label in set(all_labels)
             }
         }
-    }
+    except:
+        results["label_analysis"] = {
+            "total_label_instances": len(all_labels),
+            "unique_labels": list(set(all_labels)),
+            "label_frequency": dict(Counter(all_labels)),
+            "unique_label_combinations": len(set(label_combinations)),
+            "label_combination_frequency": dict(Counter(label_combinations)),
+            "videos_per_label": {
+                label: sum(1 for video in video_list if label == video['label'])
+                for label in set(all_labels)
+            }
+        }
     
     return results
 
@@ -314,36 +333,39 @@ def print_analysis(results):
     print(f"  Std Dev: {frames['total_frames_stdev']}")
     print(f"  Total: {frames['total_frames_sum']:,} frames")
     
-    # FPS Statistics
-    print("\n🎥 FPS STATISTICS:")
-    fps = results["fps_stats"]
-    print(f"  Range: {fps['fps_min']} - {fps['fps_max']}")
-    print(f"  Mean: {fps['fps_mean']}")
-    print(f"  Median: {fps['fps_median']}")
-    print(f"  FPS counter:")
-    for ff, count in sorted(fps['fps_counter'].items(), key=lambda x: x[0]):
-        print(f"    '{ff}': {count} videos")
-    
-    # Duration Statistics
-    print("\n⏱️  DURATION STATISTICS:")
-    duration = results["duration_stats"]
-    print(f"  Range: {duration['duration_min']:.2f}s - {duration['duration_max']:.2f}s")
-    print(f"  Mean: {duration['duration_mean']:.2f}s")
-    print(f"  Median: {duration['duration_median']:.2f}s")
-    print(f"  Total Duration: {duration['duration_sum']:.2f}s ({duration['duration_sum']/60:.1f} minutes)")
-    print(f"  Duration counter:")
-    for dur, count in sorted(duration['duration_counter'].items(), key=lambda x: x[0]):
-        print(f"    '{dur} s': {count} videos")
-    
-    # Resolution Statistics
-    print("\n📺 RESOLUTION STATISTICS:")
-    res = results["resolution_stats"]
-    print(f"  Width Range: {res['width_min']} - {res['width_max']}")
-    print(f"  Height Range: {res['height_min']} - {res['height_max']}")
-    print(f"  Unique Resolutions: {res['unique_resolutions']}")
-    print("  Resolution Distribution:")
-    for resolution, count in res['resolution_counts'].items():
-        print(f"    {resolution[0]}x{resolution[1]}: {count} videos")
+    try:
+        # FPS Statistics
+        print("\n🎥 FPS STATISTICS:")
+        fps = results["fps_stats"]
+        print(f"  Range: {fps['fps_min']} - {fps['fps_max']}")
+        print(f"  Mean: {fps['fps_mean']}")
+        print(f"  Median: {fps['fps_median']}")
+        print(f"  FPS counter:")
+        for ff, count in sorted(fps['fps_counter'].items(), key=lambda x: x[0]):
+            print(f"    '{ff}': {count} videos")
+        
+        # Duration Statistics
+        print("\n⏱️  DURATION STATISTICS:")
+        duration = results["duration_stats"]
+        print(f"  Range: {duration['duration_min']:.2f}s - {duration['duration_max']:.2f}s")
+        print(f"  Mean: {duration['duration_mean']:.2f}s")
+        print(f"  Median: {duration['duration_median']:.2f}s")
+        print(f"  Total Duration: {duration['duration_sum']:.2f}s ({duration['duration_sum']/60:.1f} minutes)")
+        print(f"  Duration counter:")
+        for dur, count in sorted(duration['duration_counter'].items(), key=lambda x: x[0]):
+            print(f"    '{dur} s': {count} videos")
+        
+        # Resolution Statistics
+        print("\n📺 RESOLUTION STATISTICS:")
+        res = results["resolution_stats"]
+        print(f"  Width Range: {res['width_min']} - {res['width_max']}")
+        print(f"  Height Range: {res['height_min']} - {res['height_max']}")
+        print(f"  Unique Resolutions: {res['unique_resolutions']}")
+        print("  Resolution Distribution:")
+        for resolution, count in res['resolution_counts'].items():
+            print(f"    {resolution[0]}x{resolution[1]}: {count} videos")
+    except Exception as e:
+        print("Error in FPS/Duration/Resolution analysis:", e)
     
     # Label Analysis
     print("\n🏷️  LABEL ANALYSIS:")

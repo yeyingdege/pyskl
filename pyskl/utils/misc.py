@@ -290,7 +290,7 @@ def analyze_video_data(video_list):
             "unique_label_combinations": len(set(label_combinations)),
             "label_combination_frequency": dict(Counter(label_combinations)),
             "videos_per_label": {
-                label: sum(1 for video in video_list if label in video.get('coarse_labels', []))
+                label: sum(1 for video in video_list if label in video['coarse_labels'])
                 for label in set(all_labels)
             }
         }
@@ -302,7 +302,7 @@ def analyze_video_data(video_list):
             "unique_label_combinations": len(set(label_combinations)),
             "label_combination_frequency": dict(Counter(label_combinations)),
             "videos_per_label": {
-                label: sum(1 for video in video_list if label == video['label'])
+                label: sum(1 for video in video_list if label == video['label'][0])
                 for label in set(all_labels)
             }
         }

@@ -1,13 +1,26 @@
+multi_label = False
 num_classes = 7
-model = dict(
-    type='RecognizerGCN',
-    backbone=dict(
-        type='STGCN',
-        gcn_adaptive='init',
-        gcn_with_res=True,
-        tcn_type='mstcn',
-        graph_cfg=dict(layout='coco', mode='spatial')),
-    cls_head=dict(type='GCNHead', num_classes=num_classes, in_channels=256, loss_cls=dict(type='BCELossWithLogits')))
+
+if multi_label:
+    model = dict(
+        type='RecognizerGCN',
+        backbone=dict(
+            type='STGCN',
+            gcn_adaptive='init',
+            gcn_with_res=True,
+            tcn_type='mstcn',
+            graph_cfg=dict(layout='coco', mode='spatial')),
+        cls_head=dict(type='GCNHead', num_classes=num_classes, in_channels=256, loss_cls=dict(type='BCELossWithLogits')))
+else:
+    model = dict(
+        type='RecognizerGCN',
+        backbone=dict(
+            type='STGCN',
+            gcn_adaptive='init',
+            gcn_with_res=True,
+            tcn_type='mstcn',
+            graph_cfg=dict(layout='coco', mode='spatial')),
+        cls_head=dict(type='GCNHead', num_classes=num_classes, in_channels=256))
 
 dataset_type = 'PoseDataset'
 ann_file = 'data/DTC/dtc7.pkl'
@@ -39,16 +52,29 @@ test_pipeline = [
     dict(type='Collect', keys=['keypoint', 'label'], meta_keys=[]),
     dict(type='ToTensor', keys=['keypoint'])
 ]
-data = dict(
-    videos_per_gpu=16,
-    workers_per_gpu=2,
-    test_dataloader=dict(videos_per_gpu=1),
-    train=dict(
-        type='RepeatDataset',
-        times=5,
-        dataset=dict(type=dataset_type, ann_file=ann_file, pipeline=train_pipeline, split='train', multi_class=True, num_classes=num_classes)),
-    val=dict(type=dataset_type, ann_file=ann_file, pipeline=val_pipeline, split='val', multi_class=True, num_classes=num_classes),
-    test=dict(type=dataset_type, ann_file=ann_file, pipeline=test_pipeline, split='val', multi_class=True, num_classes=num_classes))
+# multi-label setting
+if multi_label:
+    data = dict(
+        videos_per_gpu=16,
+        workers_per_gpu=2,
+        test_dataloader=dict(videos_per_gpu=1),
+        train=dict(
+            type='RepeatDataset',
+            times=5,
+            dataset=dict(type=dataset_type, ann_file=ann_file, pipeline=train_pipeline, split='train', multi_class=True, num_classes=num_classes)),
+        val=dict(type=dataset_type, ann_file=ann_file, pipeline=val_pipeline, split='val', multi_class=True, num_classes=num_classes),
+        test=dict(type=dataset_type, ann_file=ann_file, pipeline=test_pipeline, split='val', multi_class=True, num_classes=num_classes))
+else:
+    data = dict(
+        videos_per_gpu=16,
+        workers_per_gpu=2,
+        test_dataloader=dict(videos_per_gpu=1),
+        train=dict(
+            type='RepeatDataset',
+            times=5,
+            dataset=dict(type=dataset_type, ann_file=ann_file, pipeline=train_pipeline, split='train')),
+        val=dict(type=dataset_type, ann_file=ann_file, pipeline=val_pipeline, split='val'),
+        test=dict(type=dataset_type, ann_file=ann_file, pipeline=test_pipeline, split='val'))
 
 # optimizer
 optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0005, nesterov=True)

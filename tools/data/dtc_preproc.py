@@ -62,7 +62,7 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10):
                 'modality': 'Pose',
                 'keypoint': np.expand_dims(keypoints[start_frame:end_frame+1, :, :], axis=0), # (1, T, K, 3)
                 'keypoint_score': np.expand_dims(keypoint_score[start_frame:end_frame+1, :], axis=0), # (1, T, K)
-                'label': [label_to_id.get(label_text[0], 0)]
+                'label': label_to_id.get(label_text[0], 0) #[label_to_id.get(label_text[0], 0)]
             }
             ann_dict['total_frames'] = ann_dict['keypoint'].shape[1]
             if ann_dict['total_frames'] < frame_thres:

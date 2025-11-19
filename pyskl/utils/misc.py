@@ -295,18 +295,31 @@ def analyze_video_data(video_list):
             }
         }
     except:
-        results["label_analysis"] = {
-            "total_label_instances": len(all_labels),
-            "unique_labels": list(set(all_labels)),
-            "label_frequency": dict(Counter(all_labels)),
-            "unique_label_combinations": len(set(label_combinations)),
-            "label_combination_frequency": dict(Counter(label_combinations)),
-            "videos_per_label": {
-                label: sum(1 for video in video_list if label == video['label'][0])
-                for label in set(all_labels)
+        try:
+            results["label_analysis"] = {
+                "total_label_instances": len(all_labels),
+                "unique_labels": list(set(all_labels)),
+                "label_frequency": dict(Counter(all_labels)),
+                "unique_label_combinations": len(set(label_combinations)),
+                "label_combination_frequency": dict(Counter(label_combinations)),
+                "videos_per_label": {
+                    label: sum(1 for video in video_list if label == video['label'][0])
+                    for label in set(all_labels)
+                }
             }
-        }
-    
+        except:
+            results["label_analysis"] = {
+                "total_label_instances": len(all_labels),
+                "unique_labels": list(set(all_labels)),
+                "label_frequency": dict(Counter(all_labels)),
+                "unique_label_combinations": len(set(label_combinations)),
+                "label_combination_frequency": dict(Counter(label_combinations)),
+                "videos_per_label": {
+                    label: sum(1 for video in video_list if label == video['label'])
+                    for label in set(all_labels)
+                }
+            }
+
     return results
 
 def print_analysis(results):

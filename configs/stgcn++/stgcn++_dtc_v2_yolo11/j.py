@@ -1,5 +1,7 @@
 multi_label = False
 num_classes = 7
+load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
+load_from_strict = False
 
 if multi_label:
     model = dict(
@@ -88,4 +90,4 @@ log_config = dict(interval=100, hooks=[dict(type='TextLoggerHook')])
 
 # runtime settings
 log_level = 'INFO'
-work_dir = './work_dirs/stgcn++/stgcn++_dtc_v2_yolo11/j.py'
+work_dir = './work_dirs/stgcn++/stgcn++_dtc_v2/j.py'

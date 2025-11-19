@@ -47,8 +47,8 @@ dependencies:
   - nettle=3.7.3=hbbd107a_1
   - ninja=1.10.2=h06a4308_5
   - ninja-base=1.10.2=hd09550d_5
-  - numpy>=1.23.4
-  - numpy-base>=1.23.4
+  - numpy=1.23.4
+  - numpy-base=1.23.4
   - openh264=2.1.1=h4ff587b_0
   - openssl=1.1.1t=h7f8727e_0
   - pip=23.0.1=py310h06a4308_0

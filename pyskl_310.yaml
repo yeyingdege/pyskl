@@ -129,3 +129,5 @@ dependencies:
     - xtcocotools==1.13
     - yacs==0.1.8
     - yapf==0.32.0
+    - seaborn
+    - scikit-learn

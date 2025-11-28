@@ -27,12 +27,13 @@ def load_gt_labels(file_path):
         assert anns[i]['filename'] == split_ids[i]
 
     gt_labels = [ann['label'] for ann in anns]
-    return gt_labels
+    filenames = [ann['filename'] for ann in anns]
+    return gt_labels, filenames
 
 
 def compute_acc(ann_file, pred_file, label_map):
     results = load_results(pred_file)
-    gt_labels = load_gt_labels(ann_file)
+    gt_labels, filenames = load_gt_labels(ann_file)
     assert len(results) == len(gt_labels), "Results and ground truth labels length mismatch"
 
     # load label_map
@@ -44,7 +45,7 @@ def compute_acc(ann_file, pred_file, label_map):
     class_correct = [0] * num_classes
     class_total = [0] * num_classes
     y_preds = []
-    for pred, gt in zip(results, gt_labels):
+    for pred, gt, filename in zip(results, gt_labels, filenames):
         class_total[gt] += 1
         y = np.argmax(pred)
         y_preds.append(y)

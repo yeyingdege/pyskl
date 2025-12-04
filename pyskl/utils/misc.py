@@ -4,6 +4,7 @@ import hashlib
 import logging
 import multiprocessing as mp
 import numpy as np
+from collections import defaultdict
 import random
 import json
 import os
@@ -224,6 +225,7 @@ def analyze_video_data(video_list):
     
     # Initialize collectors
     total_frames_list = []
+    total_frames_dict = defaultdict(list)
     fps_list = []
     duration_list = []
     width_list = []
@@ -246,6 +248,7 @@ def analyze_video_data(video_list):
             labels = video.get('label', [])
             if isinstance(labels, int):
                 labels = [labels]
+            total_frames_dict[labels[0]].append(video.get('total_frames', 0))
         else:
             labels = video.get('coarse_labels', [])
         all_labels.extend(labels)
@@ -263,7 +266,10 @@ def analyze_video_data(video_list):
         },
         
         "total_frames_stats": get_stats(total_frames_list, "total_frames"),
-        
+
+        "total_frames_per_label": total_frames_dict,
+        "total_frames_per_label_stats": {label: get_stats(frames, f"total_frames_{label}") for label, frames in total_frames_dict.items()},
+
         "fps_stats": {
             **get_stats(fps_list, "fps"),
             "fps_counter": dict(Counter(fps_list))
@@ -346,6 +352,17 @@ def print_analysis(results):
     print(f"  Std Dev: {frames['total_frames_stdev']}")
     print(f"  Total: {frames['total_frames_sum']:,} frames")
     
+    # Frame statistics per label
+    print("\n FRAMES PER CLASS STATISTICS:")
+    for label, stats in results["total_frames_per_label_stats"].items():
+        print(f"  Label '{label}':")
+        print(f"    Count: {stats['total_frames_' + str(label) + '_count']}")
+        print(f"    Range: {stats['total_frames_' + str(label) + '_min']} - {stats['total_frames_' + str(label) + '_max']}")
+        print(f"    Mean: {stats['total_frames_' + str(label) + '_mean']}")
+        print(f"    Median: {stats['total_frames_' + str(label) + '_median']}")
+        print(f"    Std Dev: {stats['total_frames_' + str(label) + '_stdev']}")
+        print(f"    Total: {stats['total_frames_' + str(label) + '_sum']:,} frames")
+
     try:
         # FPS Statistics
         print("\n🎥 FPS STATISTICS:")

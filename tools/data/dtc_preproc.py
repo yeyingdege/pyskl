@@ -73,7 +73,7 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10, multi_label=F
     return new_anns, ids
 
 
-def read_annotations(dir_path, label_to_id, frame_thres):
+def read_annotations(dir_path, label_to_id, frame_thres, multi_label):
     """Read a directory that has all json annotation files."""
     anns = []
     ids = []
@@ -81,7 +81,7 @@ def read_annotations(dir_path, label_to_id, frame_thres):
         if not file.endswith('.json'):
             continue
         file_path = os.path.join(dir_path, file)
-        ann, id = read_single_annotation(file_path, label_to_id, frame_thres)
+        ann, id = read_single_annotation(file_path, label_to_id, frame_thres, multi_label)
         anns = anns + ann
         ids = ids + id
     return anns, ids
@@ -163,7 +163,7 @@ def main():
             ann = extract_pose(yolo_model, video_info)
             anns.append(ann)
     else:
-        anns, ids = read_annotations(args.annotation_dir, label_to_id, args.frame_thres)
+        anns, ids = read_annotations(args.annotation_dir, label_to_id, args.frame_thres, args.multi_label)
     
     # analyze video infos
     result = analyze_video_data(anns)

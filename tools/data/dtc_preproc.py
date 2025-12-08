@@ -13,19 +13,19 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Generate 2D pose annotations for a custom video dataset')
     parser.add_argument('--video_dir', type=str, default='data/DTC/AI-videos-selective-Sep30')
-    parser.add_argument('--out', type=str, help='output pickle name',
-                        default='data/DTC/dtc7.pkl')
+    parser.add_argument('--multi_label', action='store_true', help='multi-label classification')
+    parser.add_argument('--seed', type=int, default=0, help='random seed for data split')
     parser.add_argument('--keep_labels', nargs='+', type=str, 
                         default=['fall', 'hit', 'kick', 'run', 'throw'])
     parser.add_argument('--label_map', type=str, default='tools/data/label_map/dtc7.txt')
     parser.add_argument('--emulate', action='store_true', help='emulate label without loading annotations')
-    parser.add_argument('--annotation_dir', type=str, default='data/DTC/annotations_1.0_1761210448056')
+    parser.add_argument('--annotation_dir', type=str, default='', help='directory of annotation json files')
     parser.add_argument('--frame_thres', type=int, default=10, help='minimum frames for a valid action segment')
     args = parser.parse_args()
     return args
 
 
-def read_single_annotation(file_path, label_to_id, frame_thres=10):
+def read_single_annotation(file_path, label_to_id, frame_thres=10, multi_label=False):
     with open(file_path, 'r') as f:
         ann = json.load(f)
     frame_dir = ann.get('frame_dir', '')
@@ -62,9 +62,9 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10):
                 'modality': 'Pose',
                 'keypoint': np.expand_dims(keypoints[start_frame:end_frame+1, :, :], axis=0), # (1, T, K, 3)
                 'keypoint_score': np.expand_dims(keypoint_score[start_frame:end_frame+1, :], axis=0), # (1, T, K)
-                'label': label_to_id.get(label_text[0], 0) #[label_to_id.get(label_text[0], 0)]
             }
             ann_dict['total_frames'] = ann_dict['keypoint'].shape[1]
+            ann_dict['label'] = [label_to_id.get(label_text[0], 0)] if multi_label else label_to_id.get(label_text[0], 0)
             if ann_dict['total_frames'] < frame_thres:
                 continue
             # assert ann_dict['keypoint'].shape[1] == total_frames, "Keypoint length mismatch"
@@ -139,17 +139,18 @@ def extract_pose(yolo_model, video_info):
 
 def main():
     args = parse_args()
-    assert args.out.endswith('.pkl')
 
     label_map = [x.strip() for x in open(args.label_map).readlines()]
     label_to_id = {label: i for i, label in enumerate(label_map)}
     print(label_to_id)
 
+    # set random seed
+    random.seed(args.seed)
+
     if args.emulate:
         print('Emulating annotations without loading real annotations')
 
         video_infos = load_video_info(dir_path=args.video_dir)
-        random.seed(0)
         random.shuffle(video_infos)
         yolo_model = YOLO(".cache/yolo11m-pose.pt")
 
@@ -170,6 +171,7 @@ def main():
 
     total = len(ids)
     train_num = int(0.8 * total)
+    random.shuffle(ids)
     train = ids[:train_num]
     val = ids[train_num:]
     print(f'total {total}, train {len(train)}, val {len(val)}')
@@ -177,8 +179,9 @@ def main():
         'split': {'train': train, 'val': val},
         'annotations': anns
     }
-    mmcv.dump(data, args.out)
-    print('Saved file', args.out)
+    out_file = f"data/DTC/dtc{len(label_map)}_ml{int(args.multi_label)}_seed{args.seed}.pkl"
+    mmcv.dump(data, out_file)
+    print('Saved file', out_file)
 
 
 if __name__ == '__main__':

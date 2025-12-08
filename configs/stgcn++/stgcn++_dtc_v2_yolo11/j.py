@@ -1,7 +1,9 @@
 multi_label = False
 num_classes = 7
+seed = 0 # 0, 10, 21, 111, 1234
 load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
 load_from_strict = False
+work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_v2/j_ml{int(multi_label)}_seed{seed}'
 
 if multi_label:
     model = dict(
@@ -25,7 +27,8 @@ else:
         cls_head=dict(type='GCNHead', num_classes=num_classes, in_channels=256))
 
 dataset_type = 'PoseDataset'
-ann_file = 'data/DTC/dtc7.pkl'
+ann_file = f"data/DTC/dtc{num_classes}_ml{int(multi_label)}_seed{seed}.pkl"
+
 train_pipeline = [
     dict(type='PreNormalize2D'),
     dict(type='GenSkeFeat', dataset='coco', feats=['j']),
@@ -90,4 +93,4 @@ log_config = dict(interval=100, hooks=[dict(type='TextLoggerHook')])
 
 # runtime settings
 log_level = 'INFO'
-work_dir = './work_dirs/stgcn++/stgcn++_dtc_v2/j.py'
+

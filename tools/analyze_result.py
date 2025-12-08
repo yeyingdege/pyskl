@@ -23,8 +23,6 @@ def load_gt_labels(file_path):
     split_ids = data['split']['val']
     annotations = data['annotations']
     anns = [x for x in annotations if x['filename'] in split_ids]
-    for i in range(len(split_ids)):
-        assert anns[i]['filename'] == split_ids[i]
 
     gt_labels = [ann['label'] for ann in anns]
     filenames = [ann['filename'] for ann in anns]
@@ -51,6 +49,8 @@ def compute_acc(ann_file, pred_file, label_map):
         y_preds.append(y)
         if y == gt:
             class_correct[gt] += 1
+        # elif gt == 5:
+        #     print(f"{filename}, GT: {id_to_label[gt]}, Pred: {id_to_label[y]}")
     class_acc = [correct / total if total > 0 else 0 for correct, total in zip(class_correct, class_total)]
     mean_acc = sum(class_acc) / num_classes
     print(f'Accuracy: {sum(class_correct) / sum(class_total):.3f}, Mean Accuracy: {mean_acc:.3f}')
@@ -124,7 +124,7 @@ def main(pred_file: str, ann_file: str, label_map: str):
 
 
 if __name__ == '__main__':
-    pred_file = 'work_dirs/stgcn++/stgcn++_dtc_v2_yolo11/j.py/best_pred.pkl'
-    ann_file = 'data/DTC/dtc7.pkl'
+    pred_file = 'work_dirs/stgcn++/stgcn++_dtc_v2/j_ml0_seed0/best_pred.pkl'
+    ann_file = 'data/DTC/dtc7_ml0_seed0.pkl'
     label_map = 'tools/data/label_map/dtc7.txt'
     main(pred_file, ann_file, label_map)

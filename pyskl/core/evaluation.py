@@ -134,7 +134,9 @@ def top_k_accuracy(scores, labels, topk=(1, )):
         list[float]: Top k accuracy score for each k.
     """
     res = []
-    labels = np.array(labels)[:, np.newaxis]
+    labels = np.array(labels)[:, np.newaxis] # (batch_size, 1)
+    if len(labels.shape) == 3: 
+        labels = labels.squeeze(-1)
     for k in topk:
         max_k_preds = np.argsort(scores, axis=1)[:, -k:][:, ::-1]
         match_array = np.logical_or.reduce(max_k_preds == labels, axis=1)

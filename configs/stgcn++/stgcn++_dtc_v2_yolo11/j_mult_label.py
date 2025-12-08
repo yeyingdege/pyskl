@@ -1,4 +1,4 @@
-multi_label = False
+multi_label = True
 num_classes = 7
 seed = 0 # 0, 10, 21, 111, 1234
 load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
@@ -94,4 +94,3 @@ log_config = dict(interval=100, hooks=[dict(type='TextLoggerHook')])
 
 # runtime settings
 log_level = 'INFO'
-

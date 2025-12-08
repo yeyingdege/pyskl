@@ -95,7 +95,7 @@ class BaseRecognizer(nn.Module, metaclass=ABCMeta):
         """
         assert len(cls_score.shape) == 3  # * (Batch, NumSegs, Dim)
         average_clips = self.test_cfg.get('average_clips', 'prob')
-        if average_clips not in ['score', 'prob', None]:
+        if average_clips not in ['score', 'prob', 'sigmoid', None]:
             raise ValueError(f'{average_clips} is not supported. Supported: ["score", "prob", None]')
 
         if average_clips is None:
@@ -105,6 +105,8 @@ class BaseRecognizer(nn.Module, metaclass=ABCMeta):
             return F.softmax(cls_score, dim=2).mean(dim=1)
         elif average_clips == 'score':
             return cls_score.mean(dim=1)
+        elif average_clips == 'sigmoid':
+            return torch.sigmoid(cls_score).mean(dim=1)
 
     @abstractmethod
     def forward_train(self, imgs, label, **kwargs):

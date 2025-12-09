@@ -468,6 +468,38 @@ class FormatGCNInput:
 
 
 @PIPELINES.register_module()
+class FormatGCNInputParallel:
+    """Format final skeleton shape to the given input_format. """
+
+    def __init__(self, num_person=2, mode='zero'):
+        self.num_person = num_person
+        assert mode in ['zero', 'loop']
+        self.mode = mode
+
+    def __call__(self, results):
+        """Performs the FormatShape formatting.
+
+        Args:
+            results (dict): The resulting dict to be modified and passed
+                to the next transform in pipeline.
+        """
+        keypoint = results['keypoint']
+        if 'keypoint_score' in results:
+            keypoint = np.concatenate((keypoint, results['keypoint_score'][..., None]), axis=-1)
+
+        # M T V C
+        M, T, V, C = keypoint.shape
+        nc = results.get('num_clips', 1)
+        assert T % nc == 0
+        keypoint = keypoint.reshape((M, nc, T // nc, V, C))#.transpose(1, 0, 2, 3, 4)
+        results['keypoint'] = np.ascontiguousarray(keypoint)
+        return results
+
+    def __repr__(self):
+        repr_str = self.__class__.__name__ + f'(num_person={self.num_person}, mode={self.mode})'
+        return repr_str
+
+@PIPELINES.register_module()
 class DecompressPose:
     """Load Compressed Pose
 

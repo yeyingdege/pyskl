@@ -114,6 +114,19 @@ def visualize_results(results, out_file="yolo11m-pose_demo.mp4", action_label=''
     write_video(vis_frames, out_filename=out_file, fps=fps)
 
 
+def visualize_action_each_person(frame, pose_result, person_actions):
+    for pose_dict in pose_result:
+        pid = pose_dict['id']
+        action_label = person_actions.get(pid, '')
+        box = pose_dict['bbox']
+        x1, y1, x2, y2 = map(int, box)
+
+        # Person ID label
+        label = f"ID{pid}_{action_label}"
+        cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50, 255, 50), 2)
+    return frame
+
+
 
 if __name__ == "__main__":
     video = "data/DTC/AI-videos-selective-Sep30/kick/openart-video_0121d561_1756984486262.mp4"

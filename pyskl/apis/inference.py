@@ -181,3 +181,55 @@ def inference_recognizer(model, video, outputs=None, as_tensor=True, **kwargs):
     if outputs:
         return top5_label, returned_features
     return top5_label
+
+
+def inference_recognizer_parallel(model, data, outputs=None, as_tensor=True, **kwargs):
+    """Inference a video with the recognizer.
+
+    Args:
+        model (nn.Module): The loaded recognizer.
+        data (dict): The results dictionary (the input of
+            pipeline) / a 4D array T x H x W x 3 (The input video).
+        outputs (list(str) | tuple(str) | str | None) : Names of layers whose
+            outputs need to be returned, default: None.
+
+    Returns:
+        predictions (list(np.ndarray)): multi-label recognition result.
+        confidences (list(list)): the score of each prediction.
+    """
+
+    if isinstance(outputs, str):
+        outputs = (outputs, )
+    assert outputs is None or isinstance(outputs, (tuple, list))
+
+    cfg = model.cfg
+    device = next(model.parameters()).device  # model device
+    # build the data pipeline
+    test_pipeline = cfg.data.test.pipeline
+    test_pipeline = Compose(test_pipeline)
+    data = test_pipeline(data) # [num_person, 1, 100, 17, 3]
+    data = collate([data], samples_per_gpu=1) # [1, num_person, 1, 100, 17, 3]
+    data['keypoint'] = data['keypoint'].permute(1, 0, 2, 3, 4, 5) # put num_person to the batch dimension
+
+    if next(model.parameters()).is_cuda:
+        # scatter to specified GPU
+        data = scatter(data, [device])[0]
+
+    # forward the model
+    with OutputHook(model, outputs=outputs, as_tensor=as_tensor) as h:
+        with torch.no_grad():
+            scores = model(return_loss=False, **data) # np.array(num_person, num_classes)
+        returned_features = h.layer_outputs if outputs else None
+
+    predictions = []
+    confidences = []
+    for i in range(scores.shape[0]):
+        indice = np.where(scores[i] > 0.5)[0]
+        if len(indice) == 0:
+            indice = np.array([np.argmax(scores[i])])
+        predictions.append(indice)
+        conf = []
+        for idx in indice:
+            conf.append(round(scores[i][idx], 2))
+        confidences.append(conf)
+    return predictions, confidences

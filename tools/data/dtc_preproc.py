@@ -14,13 +14,14 @@ def parse_args():
         description='Generate 2D pose annotations for a custom video dataset')
     parser.add_argument('--video_dir', type=str, default='data/DTC/AI-videos-selective-Sep30')
     parser.add_argument('--multi_label', action='store_true', help='multi-label classification')
+    parser.add_argument('--out_dir', default='data/DTC/', help='multi-label skeleton dataset')
     parser.add_argument('--seed', type=int, default=0, help='random seed for data split')
     parser.add_argument('--keep_labels', nargs='+', type=str, 
                         default=['fall', 'hit', 'kick', 'run', 'throw'])
     parser.add_argument('--label_map', type=str, default='tools/data/label_map/dtc7.txt')
     parser.add_argument('--emulate', action='store_true', help='emulate label without loading annotations')
     parser.add_argument('--annotation_dir', type=str, default='', help='directory of annotation json files')
-    parser.add_argument('--frame_thres', type=int, default=10, help='minimum frames for a valid action segment')
+    parser.add_argument('--frame_thres', type=int, default=30, help='minimum frames for a valid video segment')
     args = parser.parse_args()
     return args
 
@@ -37,7 +38,7 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10, multi_label=F
     ids = []
     for person in annotation:
         person_id = person.get('person_id', -1)
-        # bbox = person.get('bbox', []) # list(list)
+        bbox = person.get('bbox', []) # list(list)
         keypoints = person.get('keypoint', []) # list(list(list))
         keypoint_score = person.get('keypoint_score', []) # list(list)
         action_anns = person['action_annotation'] # list(dict)
@@ -57,11 +58,13 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10, multi_label=F
             ann_dict = {
                 'filename': emulated_filename, # emulate different filenames for multiple labels from same video
                 'frame_dir': frame_dir,
+                'person_id': person_id,
                 'img_shape': (ann['original_shape'][0], ann['original_shape'][1]),
                 'original_shape': (ann['original_shape'][0], ann['original_shape'][1]),
                 'modality': 'Pose',
                 'keypoint': np.expand_dims(keypoints[start_frame:end_frame+1, :, :], axis=0), # (1, T, K, 3)
-                'keypoint_score': np.expand_dims(keypoint_score[start_frame:end_frame+1, :], axis=0), # (1, T, K)
+                'keypoint_score': np.expand_dims(keypoint_score[start_frame:end_frame+1, :], axis=0), # (1, T, K),
+                'bbox': np.array(bbox, dtype=np.float16)
             }
             ann_dict['total_frames'] = ann_dict['keypoint'].shape[1]
             ann_dict['label'] = [label_to_id.get(label_text[0], 0)] if multi_label else label_to_id.get(label_text[0], 0)
@@ -72,6 +75,59 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10, multi_label=F
             ids.append(emulated_filename)
     return new_anns, ids
 
+def read_single_annotation_multi_label(file_path, label_to_id, frame_thres=30):
+    with open(file_path, 'r') as f:
+        ann = json.load(f)
+    frame_dir = ann.get('frame_dir', '')
+    # change directory to local directory
+    frame_dir = frame_dir.replace('/data/dtc/dataset/Sep30/AI-videos-selective', 'data/DTC/AI-videos-selective-Sep30')
+    filename = frame_dir.split('/')[-1]
+    annotation = ann.get('annotation', [])
+    new_anns = []
+    ids = []
+    for person in annotation:
+        person_id = person.get('person_id', -1)
+        bbox = person.get('bbox', []) # list(list)
+        keypoints = person.get('keypoint', []) # list(list(list))
+        keypoint_score = person.get('keypoint_score', []) # list(list)
+        action_anns = person['action_annotation'] # list(dict)
+        # convert list to np array
+        if isinstance(keypoints, list) and len(keypoints) > 0:
+            keypoints = np.array(keypoints, dtype=np.float16)
+        if isinstance(keypoint_score, list) and len(keypoint_score) > 0:
+            keypoint_score = np.array(keypoint_score, dtype=np.float16)
+        
+        if  keypoints.shape[0] < frame_thres:
+            continue
+
+        labels = []
+        for i, action_ann in enumerate(action_anns):
+            label_text = action_ann['label'] # list
+            assert len(label_text) == 1, "Expect a single label per action segment" # Format defined by the annotation tool
+            label = label_to_id.get(label_text[0], 0)
+            if label == 0:
+                continue
+            labels.append(label)
+        if len(labels) == 0:
+            labels = [0]
+
+        emulated_filename = f"{filename[:-4]}_pid{person_id}"
+        ann_dict = {
+            'filename': emulated_filename, # emulate different filenames for each person from same video
+            'frame_dir': frame_dir,
+            'person_id': person_id,
+            'img_shape': (ann['original_shape'][0], ann['original_shape'][1]),
+            'original_shape': (ann['original_shape'][0], ann['original_shape'][1]),
+            'modality': 'Pose',
+            'label': labels,
+            'keypoint': np.expand_dims(keypoints, axis=0), # (1, T, K, 3)
+            'keypoint_score': np.expand_dims(keypoint_score, axis=0), # (1, T, K)
+            'total_frames': keypoints.shape[0],
+            'bbox': np.array(bbox, dtype=np.float16)
+        }
+        new_anns.append(ann_dict)
+        ids.append(emulated_filename)
+    return new_anns, ids
 
 def read_annotations(dir_path, label_to_id, frame_thres, multi_label):
     """Read a directory that has all json annotation files."""
@@ -81,7 +137,10 @@ def read_annotations(dir_path, label_to_id, frame_thres, multi_label):
         if not file.endswith('.json'):
             continue
         file_path = os.path.join(dir_path, file)
-        ann, id = read_single_annotation(file_path, label_to_id, frame_thres, multi_label)
+        if multi_label:
+            ann, id = read_single_annotation_multi_label(file_path, label_to_id, frame_thres)
+        else:
+            ann, id = read_single_annotation(file_path, label_to_id, frame_thres, multi_label)
         anns = anns + ann
         ids = ids + id
     return anns, ids
@@ -179,7 +238,8 @@ def main():
         'split': {'train': train, 'val': val},
         'annotations': anns
     }
-    out_file = f"data/DTC/dtc{len(label_map)}_ml{int(args.multi_label)}_seed{args.seed}.pkl"
+    os.makedirs(args.out_dir, exist_ok=True)
+    out_file = os.path.join(args.out_dir, f"dtc{len(label_map)}_ml{int(args.multi_label)}_seed{args.seed}.pkl")
     mmcv.dump(data, out_file)
     print('Saved file', out_file)
 

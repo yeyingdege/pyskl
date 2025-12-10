@@ -234,7 +234,7 @@ def analyze_video_data(video_list):
     label_combinations = []
     filenames = []
     frame_dirs = []
-    
+    multi_label_cnt = 0
     # Collect data from each video
     for video in video_list:
         total_frames_list.append(video.get('total_frames', 0))
@@ -248,7 +248,10 @@ def analyze_video_data(video_list):
             labels = video.get('label', [])
             if isinstance(labels, int):
                 labels = [labels]
-            total_frames_dict[labels[0]].append(video.get('total_frames', 0))
+            if len(labels) > 1:
+                multi_label_cnt += 1
+            for label in labels:
+                total_frames_dict[label].append(video.get('total_frames', 0))
         else:
             labels = video.get('coarse_labels', [])
         all_labels.extend(labels)
@@ -262,7 +265,8 @@ def analyze_video_data(video_list):
         "dataset_overview": {
             "total_videos": len(video_list),
             "unique_filenames": len(set(filenames)),
-            "unique_frame_dirs": len(set(frame_dirs))
+            "unique_frame_dirs": len(set(frame_dirs)),
+            "multi_label_persons": multi_label_cnt
         },
         
         "total_frames_stats": get_stats(total_frames_list, "total_frames"),
@@ -309,7 +313,7 @@ def analyze_video_data(video_list):
                 "unique_label_combinations": len(set(label_combinations)),
                 "label_combination_frequency": dict(Counter(label_combinations)),
                 "videos_per_label": {
-                    label: sum(1 for video in video_list if label == video['label'][0])
+                    label: sum(1 for video in video_list if label in video['label'])
                     for label in set(all_labels)
                 }
             }
@@ -341,6 +345,7 @@ def print_analysis(results):
     print(f"  Total Videos: {overview['total_videos']}")
     print(f"  Unique Filenames: {overview['unique_filenames']}")
     print(f"  Unique Frame Directories: {overview['unique_frame_dirs']}")
+    print(f"  Multi-label Persons: {overview['multi_label_persons']}")
     
     # Total Frames Statistics
     print("\n🎬 TOTAL FRAMES STATISTICS:")

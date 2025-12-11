@@ -100,14 +100,15 @@ def read_single_annotation_multi_label(file_path, label_to_id, frame_thres=30):
         if  keypoints.shape[0] < frame_thres:
             continue
 
-        labels = []
+        labels = set()
         for i, action_ann in enumerate(action_anns):
             label_text = action_ann['label'] # list
             assert len(label_text) == 1, "Expect a single label per action segment" # Format defined by the annotation tool
             label = label_to_id.get(label_text[0], 0)
             if label == 0:
                 continue
-            labels.append(label)
+            labels.add(label)
+        labels = list(labels)
         if len(labels) == 0:
             labels = [0]
 

@@ -3,7 +3,7 @@ num_classes = 7
 seed = 0 # 0, 10, 21, 111, 1234
 load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
 load_from_strict = False
-work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_v2/j_ml{int(multi_label)}_seed{seed}'
+work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label/j_ml{int(multi_label)}_seed{seed}'
 
 if multi_label:
     model = dict(
@@ -28,7 +28,7 @@ else:
         cls_head=dict(type='GCNHead', num_classes=num_classes, in_channels=256))
 
 dataset_type = 'PoseDataset'
-ann_file = f"data/DTC/dtc{num_classes}_ml{int(multi_label)}_seed{seed}.pkl"
+ann_file = f"data/DTC/multi-label/dtc{num_classes}_ml{int(multi_label)}_seed{seed}.pkl"
 
 train_pipeline = [
     dict(type='PreNormalize2D'),
@@ -54,7 +54,7 @@ test_pipeline = [
     dict(type='UniformSample', clip_len=100, num_clips=1),
     dict(type='PoseDecode'),
     dict(type='FormatGCNInput', num_person=1),
-    # dict(type='FormatGCNInputParallel', num_person=20),
+    # dict(type='FormatGCNInputParallel', num_person=1),
     dict(type='Collect', keys=['keypoint', 'label'], meta_keys=[]),
     dict(type='ToTensor', keys=['keypoint'])
 ]
@@ -89,7 +89,7 @@ optimizer_config = dict(grad_clip=None)
 lr_config = dict(policy='CosineAnnealing', min_lr=0, by_epoch=False)
 total_epochs = 20
 checkpoint_config = dict(interval=1)
-evaluation = dict(interval=1, metrics=['top_k_accuracy'])
+evaluation = dict(interval=1, metrics=['recall'])
 log_config = dict(interval=100, hooks=[dict(type='TextLoggerHook')])
 
 # runtime settings

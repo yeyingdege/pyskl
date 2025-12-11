@@ -12,7 +12,7 @@ from mmcv.utils import print_log
 from torch.utils.data import Dataset
 
 from pyskl.smp import auto_mix2
-from ..core import mean_average_precision, mean_class_accuracy, top_k_accuracy
+from ..core import mean_average_precision, mean_class_accuracy, top_k_accuracy, top_k_accuracy_multilabel
 from .pipelines import Compose
 
 
@@ -172,7 +172,7 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
                 metric_options['top_k_accuracy'], **deprecated_kwargs)
 
         metrics = metrics if isinstance(metrics, (list, tuple)) else [metrics]
-        allowed_metrics = ['top_k_accuracy', 'mean_class_accuracy', 'mean_average_precision']
+        allowed_metrics = ['top_k_accuracy', 'mean_class_accuracy', 'mean_average_precision', 'recall']
 
         for metric in metrics:
             if metric not in allowed_metrics:
@@ -198,6 +198,25 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
                     topk = (topk, )
 
                 top_k_acc = top_k_accuracy(results, gt_labels, topk)
+                log_msg = []
+                for k, acc in zip(topk, top_k_acc):
+                    eval_results[f'top{k}_acc'] = acc
+                    log_msg.append(f'\ntop{k}_acc\t{acc:.4f}')
+                log_msg = ''.join(log_msg)
+                print_log(log_msg, logger=logger)
+                continue
+
+            if metric == 'recall':
+                topk = metric_options.setdefault('top_k_accuracy_multilabel',
+                                                 {}).setdefault(
+                                                     'topk', (1, 5))
+                if not isinstance(topk, (int, tuple)):
+                    raise TypeError('topk must be int or tuple of int, '
+                                    f'but got {type(topk)}')
+                if isinstance(topk, int):
+                    topk = (topk, )
+
+                top_k_acc = top_k_accuracy_multilabel(results, gt_labels, topk)
                 log_msg = []
                 for k, acc in zip(topk, top_k_acc):
                     eval_results[f'top{k}_acc'] = acc

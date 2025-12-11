@@ -89,7 +89,7 @@ optimizer_config = dict(grad_clip=None)
 lr_config = dict(policy='CosineAnnealing', min_lr=0, by_epoch=False)
 total_epochs = 20
 checkpoint_config = dict(interval=1)
-evaluation = dict(interval=1, metrics=['top_k_accuracy'])
+evaluation = dict(interval=1, metrics=['recall'])
 log_config = dict(interval=100, hooks=[dict(type='TextLoggerHook')])
 
 # runtime settings

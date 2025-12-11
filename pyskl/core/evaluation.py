@@ -146,6 +146,44 @@ def top_k_accuracy(scores, labels, topk=(1, )):
     return res
 
 
+def top_k_accuracy_multilabel(scores, labels, topk=(1,)):
+    """
+    Multi-label top-k accuracy for list of score arrays.
+    Args:
+        scores (list[np.ndarray]): List of prediction scores for each sample.
+                                   Each element is an array of shape (num_classes,)
+        labels (list): Ground truth labels. Each element can be:
+                      - int: single label
+                      - list/array: multiple labels
+        topk (tuple): Tuple of k values to compute accuracy for
+    Returns:
+        list: Top-k accuracy values for each k
+    """
+    num_samples = len(scores)
+    maxk = max(topk)
+    res = []
+    for k in topk:
+        correct = 0
+        for i in range(num_samples):
+            # Get top-k predictions for this sample
+            score_array = np.array(scores[i])
+            top_k_indices = np.argsort(score_array)[-k:][::-1]  # Top-k in descending order
+            top_k_preds = set(top_k_indices)
+
+            # Normalize ground truth labels to set
+            if isinstance(labels[i], (list, np.ndarray)):
+                gt_set = set(labels[i])
+            else:
+                gt_set = {labels[i]}
+
+            # Check if any ground truth label is in top-k predictions
+            if len(top_k_preds & gt_set) > 0:
+                correct += 1
+
+        accuracy = correct / num_samples * 100.0
+        res.append(accuracy)
+    return res
+
 def mean_average_precision(scores, labels):
     """Mean average precision for multi-label recognition.
 

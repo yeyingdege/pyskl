@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
+from pyskl.core import compute_class_recall, print_recall_results
 
 
 def load_results(file_path):
@@ -44,6 +45,8 @@ def compute_acc(ann_file, pred_file, label_map):
     class_total = [0] * num_classes
     y_preds = []
     for pred, gt, filename in zip(results, gt_labels, filenames):
+        if isinstance(gt, list):
+            gt = gt[0] # TODO: handle multi-label case
         class_total[gt] += 1
         y = np.argmax(pred)
         y_preds.append(y)
@@ -58,6 +61,52 @@ def compute_acc(ann_file, pred_file, label_map):
     for i, acc in enumerate(class_acc):
         print(f'  {id_to_label[i]}: {acc:.3f} ({class_correct[i]}/{class_total[i]})')
     return gt_labels, y_preds
+
+def compute_acc_multi_label(ann_file, pred_file, label_map, topk=(1,)):
+    """
+    results: list(np.array(7))
+    gt_labels: list(list(int))
+    recall_dict: key('overall_recall', 'mean_recall', 'class_recall', 'class_support', 'y_preds'(list(list)))
+    """
+    results = load_results(pred_file)
+    gt_labels, filenames = load_gt_labels(ann_file)
+    assert len(results) == len(gt_labels), "Results and ground truth labels length mismatch"
+
+    # load label_map
+    if isinstance(label_map, str):
+        label_map = [x.strip() for x in open(label_map).readlines()]
+    id_to_label = {i: label for i, label in enumerate(label_map)}
+
+    recall_dict = compute_class_recall(results, gt_labels, len(label_map), topk)
+    log_msg = print_recall_results(recall_dict, topk, label_map)
+    print(log_msg)
+
+    # code to compute recall for multiple label prediction
+    ml_labels, ml_results, ml_preds = [], [], []
+    for i, pred in enumerate(recall_dict['y_preds']):
+        if len(pred) > 1:
+            ml_labels.append(gt_labels[i])
+            ml_results.append(results[i])
+            ml_preds.append(pred)
+            print(f"{filenames[i]}\tGT: {gt_labels[i]}\t'pred: {pred}")
+
+    ml_recall_dict = compute_class_recall(ml_results, ml_labels, len(label_map), topk)
+    log_msg = print_recall_results(ml_recall_dict, topk, label_map)
+    print(log_msg)
+
+    # code to compute recall for multiple GT labels
+    ml_labels, ml_results, ml_preds = [], [], []
+    for i, gt in enumerate(gt_labels):
+        if len(gt) > 1:
+            ml_labels.append(gt_labels[i])
+            ml_results.append(results[i])
+            ml_preds.append(recall_dict['y_preds'][i])
+            print(f"{filenames[i]}\tGT: {gt_labels[i]}\t'pred: {recall_dict['y_preds'][i]}")
+
+    ml_recall_dict = compute_class_recall(ml_results, ml_labels, len(label_map), topk)
+    log_msg = print_recall_results(ml_recall_dict, topk, label_map)
+    print(log_msg)
+    return gt_labels, recall_dict['y_preds']
 
 
 def plot_confusion_matrix(cm, labels, title='Confusion Matrix (Normalized)', cmap=plt.cm.Blues, fmt=".2f"):
@@ -95,36 +144,39 @@ def plot_confusion_matrix(cm, labels, title='Confusion Matrix (Normalized)', cma
     plt.close()
 
 
-def main(pred_file: str, ann_file: str, label_map: str):
+def main(pred_file: str, ann_file: str, label_map: str, multi_label: bool):
     LABELS = [x.strip() for x in open(label_map).readlines()]
-    gt_labels, y_preds = compute_acc(ann_file, pred_file, LABELS)
+    if multi_label:
+        gt_labels, y_preds = compute_acc_multi_label(ann_file, pred_file, LABELS)
+    else:
+        gt_labels, y_preds = compute_acc(ann_file, pred_file, LABELS)
 
-    NUM_CLASSES = len(LABELS)
-    # Calculate the raw confusion matrix
-    # cm[i, j] is the number of samples with true label i that were predicted as label j.
-    cm = confusion_matrix(gt_labels, y_preds, labels=range(NUM_CLASSES))
+        NUM_CLASSES = len(LABELS)
+        # Calculate the raw confusion matrix
+        # cm[i, j] is the number of samples with true label i that were predicted as label j.
+        cm = confusion_matrix(gt_labels, y_preds, labels=range(NUM_CLASSES))
 
-    # Calculate the normalized confusion matrix (by row, to show recall/accuracy per class)
-    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    # 1. Plot the Normalized Confusion Matrix (Shows Recall)
-    plot_confusion_matrix(
-        cm_normalized,
-        LABELS,
-        title='Normalized Confusion Matrix (Recall per Class)',
-        cmap=sns.light_palette("seagreen", as_cmap=True) # Use a custom palette
-    )
-    # 2. Plot the Raw Confusion Matrix (Optional, for counts)
-    plot_confusion_matrix(
-        cm,
-        LABELS,
-        title='Raw Confusion Matrix (Counts)',
-        cmap=plt.cm.Oranges,
-        fmt="d"
-    )
+        # Calculate the normalized confusion matrix (by row, to show recall/accuracy per class)
+        cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        # 1. Plot the Normalized Confusion Matrix (Shows Recall)
+        plot_confusion_matrix(
+            cm_normalized,
+            LABELS,
+            title='Normalized Confusion Matrix (Recall per Class)',
+            cmap=sns.light_palette("seagreen", as_cmap=True) # Use a custom palette
+        )
+        # 2. Plot the Raw Confusion Matrix (Optional, for counts)
+        plot_confusion_matrix(
+            cm,
+            LABELS,
+            title='Raw Confusion Matrix (Counts)',
+            cmap=plt.cm.Oranges,
+            fmt="d"
+        )
 
 
 if __name__ == '__main__':
-    pred_file = 'work_dirs/stgcn++/stgcn++_dtc_v2/j_ml0_seed0/best_pred.pkl'
-    ann_file = 'data/DTC/dtc7_ml0_seed0.pkl'
+    pred_file = 'work_dirs/stgcn++/stgcn++_dtc_multi-label/j_ml1_seed0/best_pred.pkl'
+    ann_file = 'data/DTC/multi-label/dtc7_ml1_seed0.pkl'
     label_map = 'tools/data/label_map/dtc7.txt'
-    main(pred_file, ann_file, label_map)
+    main(pred_file, ann_file, label_map, multi_label=True)

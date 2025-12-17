@@ -12,7 +12,8 @@ from mmcv.utils import print_log
 from torch.utils.data import Dataset
 
 from pyskl.smp import auto_mix2
-from ..core import mean_average_precision, mean_class_accuracy, top_k_accuracy, top_k_accuracy_multilabel
+from ..core import mean_average_precision, mean_class_accuracy, top_k_accuracy, \
+                top_k_accuracy_multilabel, compute_class_recall, print_recall_results
 from .pipelines import Compose
 
 
@@ -209,19 +210,23 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
             if metric == 'recall':
                 topk = metric_options.setdefault('top_k_accuracy_multilabel',
                                                  {}).setdefault(
-                                                     'topk', (1, 5))
+                                                     'topk', (1,))
                 if not isinstance(topk, (int, tuple)):
                     raise TypeError('topk must be int or tuple of int, '
                                     f'but got {type(topk)}')
                 if isinstance(topk, int):
                     topk = (topk, )
 
-                top_k_acc = top_k_accuracy_multilabel(results, gt_labels, topk)
-                log_msg = []
-                for k, acc in zip(topk, top_k_acc):
-                    eval_results[f'top{k}_acc'] = acc
-                    log_msg.append(f'\ntop{k}_acc\t{acc:.4f}')
-                log_msg = ''.join(log_msg)
+                # top_k_acc = top_k_accuracy_multilabel(results, gt_labels, topk)
+                # log_msg = []
+                # for k, acc in zip(topk, top_k_acc):
+                #     eval_results[f'top{k}_acc'] = acc
+                #     log_msg.append(f'\ntop{k}_acc\t{acc:.4f}')
+                
+                recall_dict = compute_class_recall(results, gt_labels, self.num_classes, topk)
+                eval_results['overall_recall'] = recall_dict['overall_recall']
+                eval_results['mean_recall'] = recall_dict['mean_recall']
+                log_msg = print_recall_results(recall_dict, topk)
                 print_log(log_msg, logger=logger)
                 continue
 

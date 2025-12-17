@@ -11,11 +11,12 @@ from scipy.optimize import linear_sum_assignment
 import sys
 sys.path.append('.')
 
-from ultralytics import YOLO
 import cv2
+from ultralytics import YOLO
 
 from pyskl.apis import init_recognizer, inference_recognizer_parallel
 from pyskl.utils.yolo_utils import visualize_action_each_person
+from tools.data.dtc_preproc import read_single_annotation_multi_label
 
 try:
     from mmpose.apis import init_pose_model, vis_pose_result
@@ -183,57 +184,100 @@ def main():
     yolo_model = YOLO(".cache/yolo11m-pose.pt")
     # Load label_map
     label_map = [x.strip() for x in open(args.label_map).readlines()]
+    label_to_id = {label: i for i, label in enumerate(label_map)}
 
-    frame_paths, original_frames = frame_extraction(args.video, args.short_side, resize=False)
-    num_frame = len(frame_paths)
-    h, w, _ = original_frames[0].shape
+    # handle skeleton input
+    if args.video.endswith('.json') or args.video.endswith('.pkl'):
+        anno_list, _ = read_single_annotation_multi_label(args.video, label_to_id)
+        # merge multiple skeleton annotations into one during inference
+        filename = anno_list[0]['frame_dir']
+        if os.path.exists(filename) and filename.endswith(('.mp4', '.avi', '.mov')):
+            frame_paths, original_frames = frame_extraction(filename, args.short_side, resize=False)
+        h, w = anno_list[0]['original_shape']
+        num_person = len(anno_list)
+        num_frame = anno_list[0]['total_frames']
+        num_keypoint = 17
+        keypoint = np.zeros((num_person, num_frame, num_keypoint, 2), dtype=np.float16)
+        keypoint_score = np.zeros((num_person, num_frame, num_keypoint), dtype=np.float16)
+        idx_to_person_id = {}
+        for i, ann in enumerate(anno_list):
+            person_id = ann['person_id']
+            kpt = ann['keypoint'] # (1, T, K, 3)
+            kpt_score = ann['keypoint_score'] # (1, T, K)
+            keypoint[i, :, :, :] = kpt[0, :, :, :2]
+            keypoint_score[i, :, :] = kpt_score[0, :, :]
+            idx_to_person_id[i] = person_id
+
+        pose_results = []
+        for fid in range(num_frame):
+            pose_result = []
+            for pid in range(num_person):
+                pose_dict = {
+                    'id': idx_to_person_id[pid],
+                    'bbox': anno_list[pid]['bbox'][fid],
+                    'keypoints': np.hstack((keypoint[pid, fid, :, :], 
+                                            keypoint_score[pid, fid, :][:, np.newaxis]))  # shape (num_keypoints, 3)
+                }
+                pose_result.append(pose_dict)
+            pose_results.append(pose_result)
+    
+    elif args.video.endswith('.mp4') or args.video.endswith('.avi') or args.video.endswith('.mov'):
+        # handle video input
+        frame_paths, original_frames = frame_extraction(args.video, args.short_side, resize=False)
+        filename = args.video
+        num_frame = len(frame_paths)
+        h, w, _ = original_frames[0].shape
+
+        keypoint, keypoint_score, pose_results, idx_to_person_id = extract_pose(yolo_model, args.video)
+        torch.cuda.empty_cache()
 
     fake_anno = dict(
-        frame_dir='',
+        frame_dir=filename,
         label=-1,
         img_shape=(h, w),
         original_shape=(h, w),
         start_index=0,
         modality='Pose',
-        total_frames=num_frame)
-
-    keypoint, keypoint_score, pose_results, idx_to_person_id = extract_pose(yolo_model, args.video)
-    fake_anno['keypoint'] = keypoint
-    fake_anno['keypoint_score'] = keypoint_score
-    torch.cuda.empty_cache()
+        total_frames=num_frame,
+        keypoint=keypoint,
+        keypoint_score=keypoint_score,
+        test_mode=True)
 
     if fake_anno['keypoint'] is None:
         action_label = ''
     else:
         results, scores = inference_recognizer_parallel(model, fake_anno)
         # assume each person id has a prediction result
-        action_label = [[label_map[a]] for res in results for a in res]
+        action_label = [[label_map[a] for a in res] for res in results]
         person_actions = {}
         for pid, al, score in zip(sorted(idx_to_person_id.values()), action_label, scores):
             action_and_score_str = [f'{a}({s:.2f})' for a, s in zip(al, score)]
             person_actions[pid] = action_and_score_str
             print(f'Person ID {pid}: Predicted action: {action_and_score_str}')
 
-    pose_model = init_pose_model(args.pose_config, args.pose_checkpoint, args.device)
-    # draw keypoints and action label on each frame
-    vis_frames = []
-    frame_count = 0
-    for frame_path, pose_result in zip(frame_paths, pose_results):
-        frame = cv2.imread(frame_path)
-        annotated = frame.copy()
-        annotated = vis_pose_result(pose_model, annotated, pose_result,
-                                            radius=6, thickness=2)
-        cv2.putText(annotated, f"frame {frame_count+1}", (30, 60), FONTFACE, FONTSCALE, FONTCOLOR, THICKNESS, LINETYPE)
-        # draw each person's action
-        annotated = visualize_action_each_person(annotated, pose_result, person_actions)
-        vis_frames.append(annotated)
-        frame_count += 1
-    cv2.destroyAllWindows()
+    try:
+        pose_model = init_pose_model(args.pose_config, args.pose_checkpoint, args.device)
+        # draw keypoints and action label on each frame
+        vis_frames = []
+        frame_count = 0
+        for frame_path, pose_result in zip(frame_paths, pose_results):
+            frame = cv2.imread(frame_path)
+            annotated = frame.copy()
+            annotated = vis_pose_result(pose_model, annotated, pose_result,
+                                                radius=6, thickness=2)
+            cv2.putText(annotated, f"frame {frame_count+1}", (30, 60), FONTFACE, FONTSCALE, FONTCOLOR, THICKNESS, LINETYPE)
+            # draw each person's action
+            annotated = visualize_action_each_person(annotated, pose_result, person_actions)
+            vis_frames.append(annotated)
+            frame_count += 1
+        cv2.destroyAllWindows()
 
-    os.makedirs(args.out_dir, exist_ok=True)
-    out_filename = osp.join(args.out_dir, f"demo_{args.video.split('/')[-1].split('.')[0]}.mp4")
-    write_video(vis_frames, out_filename=out_filename, fps=24)
-    tmp_frame_dir = osp.join('./tmp', osp.basename(osp.splitext(args.video)[0]))
+        os.makedirs(args.out_dir, exist_ok=True)
+        out_filename = osp.join(args.out_dir, f"demo_{filename.split('/')[-1].split('.')[0]}.mp4")
+        write_video(vis_frames, out_filename=out_filename, fps=24)
+    except Exception as e:
+        print('Pose visualization failed:', e)
+    tmp_frame_dir = osp.join('./tmp', osp.basename(osp.splitext(filename)[0]))
     shutil.rmtree(tmp_frame_dir)
 
 

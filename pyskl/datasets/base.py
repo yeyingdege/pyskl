@@ -13,7 +13,8 @@ from torch.utils.data import Dataset
 
 from pyskl.smp import auto_mix2
 from ..core import mean_average_precision, mean_class_accuracy, top_k_accuracy, \
-                top_k_accuracy_multilabel, compute_class_recall, print_recall_results
+                top_k_accuracy_multilabel, compute_class_recall, print_recall_results, \
+                compute_multilabel_metrics, print_metrics
 from .pipelines import Compose
 
 
@@ -247,6 +248,20 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
                 log_msg = f'\nmean_average_precision\t{mAP:.4f}'
                 print_log(log_msg, logger=logger)
                 continue
+
+            if metric == 'f1':
+                result_dict = compute_multilabel_metrics(results, gt_labels, self.num_classes)
+                
+                eval_results['mean_f1'] = result_dict['mean_f1']
+                eval_results['mean_recall'] = result_dict['mean_recall']
+                eval_results['mean_precision'] = result_dict['mean_precision']
+
+                eval_results['overall_f1'] = result_dict['overall_f1']
+                eval_results['overall_recall'] = result_dict['overall_recall']
+                eval_results['overall_precision'] = result_dict['overall_precision']
+
+                log_msg = print_metrics(result_dict)
+                print_log(log_msg, logger=logger)
 
         return eval_results
 

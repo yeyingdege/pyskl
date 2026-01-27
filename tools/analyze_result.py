@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
-from pyskl.core import compute_class_recall, print_recall_results
+from pyskl.core import compute_class_recall, print_recall_results, compute_multilabel_metrics, print_metrics
 
 
 def load_results(file_path):
@@ -67,6 +67,7 @@ def compute_acc_multi_label(ann_file, pred_file, label_map, topk=(1,)):
     results: list(np.array(7))
     gt_labels: list(list(int))
     recall_dict: key('overall_recall', 'mean_recall', 'class_recall', 'class_support', 'y_preds'(list(list)))
+        new keys('overall_precision', 'overall_f1', 'class_precision', 'class_f1', 'mean_precision', 'mean_f1', 'class_predictions')
     """
     results = load_results(pred_file)
     gt_labels, filenames = load_gt_labels(ann_file)
@@ -77,35 +78,33 @@ def compute_acc_multi_label(ann_file, pred_file, label_map, topk=(1,)):
         label_map = [x.strip() for x in open(label_map).readlines()]
     id_to_label = {i: label for i, label in enumerate(label_map)}
 
-    recall_dict = compute_class_recall(results, gt_labels, len(label_map), topk)
-    log_msg = print_recall_results(recall_dict, topk, label_map)
-    print(log_msg)
+    recall_dict = compute_multilabel_metrics(results, gt_labels, len(label_map), topk)
+    msg = print_metrics(recall_dict, label_map)
+    print(msg)
 
-    # code to compute recall for multiple label prediction
-    ml_labels, ml_results, ml_preds = [], [], []
-    for i, pred in enumerate(recall_dict['y_preds']):
-        if len(pred) > 1:
-            ml_labels.append(gt_labels[i])
-            ml_results.append(results[i])
-            ml_preds.append(pred)
-            print(f"{filenames[i]}\tGT: {gt_labels[i]}\t'pred: {pred}")
+    # # code to compute recall for multiple label prediction
+    # ml_labels, ml_results, ml_preds = [], [], []
+    # for i, pred in enumerate(recall_dict['y_preds']):
+    #     if len(pred) > 1:
+    #         ml_labels.append(gt_labels[i])
+    #         ml_results.append(results[i])
+    #         ml_preds.append(pred)
+    #         print(f"{filenames[i]}\tGT: {gt_labels[i]}\t'pred: {pred}")
 
-    ml_recall_dict = compute_class_recall(ml_results, ml_labels, len(label_map), topk)
-    log_msg = print_recall_results(ml_recall_dict, topk, label_map)
-    print(log_msg)
+    # ml_recall_dict = compute_multilabel_metrics(ml_results, ml_labels, len(label_map), topk)
+    # print_metrics(ml_recall_dict, label_map)
 
-    # code to compute recall for multiple GT labels
-    ml_labels, ml_results, ml_preds = [], [], []
-    for i, gt in enumerate(gt_labels):
-        if len(gt) > 1:
-            ml_labels.append(gt_labels[i])
-            ml_results.append(results[i])
-            ml_preds.append(recall_dict['y_preds'][i])
-            print(f"{filenames[i]}\tGT: {gt_labels[i]}\t'pred: {recall_dict['y_preds'][i]}")
+    # # code to compute recall for multiple GT labels
+    # ml_labels, ml_results, ml_preds = [], [], []
+    # for i, gt in enumerate(gt_labels):
+    #     if len(gt) > 1:
+    #         ml_labels.append(gt_labels[i])
+    #         ml_results.append(results[i])
+    #         ml_preds.append(recall_dict['y_preds'][i])
+    #         print(f"{filenames[i]}\tGT: {gt_labels[i]}\t'pred: {recall_dict['y_preds'][i]}")
 
-    ml_recall_dict = compute_class_recall(ml_results, ml_labels, len(label_map), topk)
-    log_msg = print_recall_results(ml_recall_dict, topk, label_map)
-    print(log_msg)
+    # ml_recall_dict = compute_multilabel_metrics(ml_results, ml_labels, len(label_map), topk)
+    # print_metrics(ml_recall_dict, label_map)
     return gt_labels, recall_dict['y_preds']
 
 

@@ -403,6 +403,7 @@ def print_recall_results(results, topk=(1,), class_name_list=None):
     log_msg = '\n'.join(log_msg)
     return log_msg
 
+
 def mean_average_precision(scores, labels):
     """Mean average precision for multi-label recognition.
 
@@ -471,3 +472,171 @@ def binary_precision_recall_curve(y_score, y_true):
     sl = slice(last_ind, None, -1)
 
     return np.r_[precision[sl], 1], np.r_[recall[sl], 0], thresholds[sl]
+
+
+def compute_multilabel_metrics(scores, labels, num_classes, topk=(1,)):
+    """
+    Compute comprehensive metrics for multi-label classification including recall, 
+    precision, and F1 scores (overall, per-class, and mean).
+
+    Args:
+        scores (list[np.ndarray]): List of prediction scores for each sample.
+                                    Each element is an array of shape (num_classes,)
+        labels (list): Ground truth labels. Each element can be:
+                        - int: single label
+                        - list/array: multiple labels
+        num_classes (int): Total number of classes
+        topk (tuple): Tuple of k values to compute metrics for
+
+    Returns:
+        dict: Dictionary containing for each k in topk:
+            - 'overall_recall': recall computed over all samples
+            - 'overall_precision': precision computed over all samples
+            - 'overall_f1': F1 score computed from overall recall and precision
+            - 'class_recall': array of per-class recall (num_classes,)
+            - 'class_precision': array of per-class precision (num_classes,)
+            - 'class_f1': array of per-class F1 scores (num_classes,)
+            - 'mean_recall': mean recall across classes (excluding NaN)
+            - 'mean_precision': mean precision across classes (excluding NaN)
+            - 'mean_f1': mean F1 score across classes (excluding NaN)
+            - 'class_support': array of ground truth sample counts per class
+            - 'class_predictions': array of prediction counts per class
+            - 'y_preds': list of predicted labels for each sample
+    """
+    num_samples = len(scores)
+    y_preds = {k: [] for k in topk}
+
+    # Initialize counters for each class and k
+    class_tp = {k: np.zeros(num_classes) for k in topk}  # True positives
+    class_fp = {k: np.zeros(num_classes) for k in topk}  # False positives
+    class_support = np.zeros(num_classes)  # Total ground truth samples per class
+
+    # Overall metrics accumulators
+    overall_tp = {k: 0 for k in topk}
+    overall_fp = {k: 0 for k in topk}
+    overall_fn = {k: 0 for k in topk}
+
+    for i in range(num_samples):
+        score_array = np.array(scores[i])
+        
+        # Normalize ground truth labels to set
+        if isinstance(labels[i], (list, np.ndarray)):
+            gt_set = set(labels[i])
+        else:
+            gt_set = {labels[i]}
+        
+        # Update support count for each ground truth class
+        for gt_label in gt_set:
+            class_support[gt_label] += 1
+        
+        # Compute for each k
+        for k in topk:
+            # Get top-k predictions (using threshold 0.5)
+            top_k_preds = set(np.where(score_array > 0.5)[0])
+            if len(top_k_preds) == 0:
+                # Fallback to argmax if no predictions above threshold
+                top_k_preds = {np.argmax(score_array)}
+            
+            y_preds[k].append(list(top_k_preds))
+            
+            # Calculate true positives, false positives, false negatives
+            tp_set = top_k_preds & gt_set
+            fp_set = top_k_preds - gt_set
+            fn_set = gt_set - top_k_preds
+            
+            # Update overall counters
+            overall_tp[k] += len(tp_set)
+            overall_fp[k] += len(fp_set)
+            overall_fn[k] += len(fn_set)
+            
+            # Update per-class counters
+            for pred_tp in tp_set:
+                class_tp[k][pred_tp] += 1
+            
+            for pred_fp in fp_set:
+                class_fp[k][pred_fp] += 1
+
+    # Prepare results
+    results = {}
+
+    for k in topk:
+        # Compute overall metrics
+        overall_recall = (overall_tp[k] / (overall_tp[k] + overall_fn[k]) * 100.0 
+                            if (overall_tp[k] + overall_fn[k]) > 0 else 0.0)
+        overall_precision = (overall_tp[k] / (overall_tp[k] + overall_fp[k]) * 100.0 
+                            if (overall_tp[k] + overall_fp[k]) > 0 else 0.0)
+        overall_f1 = (2 * overall_precision * overall_recall / (overall_precision + overall_recall)
+                        if (overall_precision + overall_recall) > 0 else 0.0)
+        
+        # Compute per-class metrics
+        class_recall = np.zeros(num_classes)
+        class_precision = np.zeros(num_classes)
+        class_f1 = np.zeros(num_classes)
+        class_predictions = class_tp[k] + class_fp[k]
+        
+        for c in range(num_classes):
+            # Recall
+            if class_support[c] > 0:
+                class_recall[c] = class_tp[k][c] / class_support[c] * 100.0
+            else:
+                class_recall[c] = np.nan
+            
+            # Precision
+            if class_predictions[c] > 0:
+                class_precision[c] = class_tp[k][c] / class_predictions[c] * 100.0
+            else:
+                class_precision[c] = np.nan
+            
+            # F1 Score
+            if not np.isnan(class_recall[c]) and not np.isnan(class_precision[c]):
+                if (class_recall[c] + class_precision[c]) > 0:
+                    class_f1[c] = (2 * class_precision[c] * class_recall[c] / 
+                                    (class_precision[c] + class_recall[c]))
+                else:
+                    class_f1[c] = 0.0
+            else:
+                class_f1[c] = np.nan
+        
+        # Compute mean metrics (excluding NaN values)
+        valid_recalls = class_recall[~np.isnan(class_recall)]
+        valid_precisions = class_precision[~np.isnan(class_precision)]
+        valid_f1s = class_f1[~np.isnan(class_f1)]
+        
+        mean_recall = np.mean(valid_recalls) if len(valid_recalls) > 0 else 0.0
+        mean_precision = np.mean(valid_precisions) if len(valid_precisions) > 0 else 0.0
+        mean_f1 = np.mean(valid_f1s) if len(valid_f1s) > 0 else 0.0
+        
+        results[k] = {
+            'overall_recall': overall_recall,
+            'overall_precision': overall_precision,
+            'overall_f1': overall_f1,
+            'class_recall': class_recall,
+            'class_precision': class_precision,
+            'class_f1': class_f1,
+            'mean_recall': mean_recall,
+            'mean_precision': mean_precision,
+            'mean_f1': mean_f1,
+            'class_support': class_support,
+            'class_predictions': class_predictions,
+            'y_preds': y_preds[k]
+        }
+
+    return results[1]
+
+
+def print_metrics(metrics, label_map=None):
+    log_msg = []
+    log_msg.append(f"\nOverall Recall: {metrics['overall_recall']:.2f}%")
+    log_msg.append(f"Overall Precision: {metrics['overall_precision']:.2f}%")
+    log_msg.append(f"Overall F1: {metrics['overall_f1']:.2f}%")
+    log_msg.append(f"\nMean Recall: {metrics['mean_recall']:.2f}%")
+    log_msg.append(f"Mean Precision: {metrics['mean_precision']:.2f}%")
+    log_msg.append(f"Mean F1: {metrics['mean_f1']:.2f}%")
+    print(f"\nPer-class metrics:")
+    for c in range(len(label_map)):
+        print(f"  Class {c}-{label_map[c]}: Recall={metrics['class_recall'][c]:.2f}%, "
+            f"Precision={metrics['class_precision'][c]:.2f}%, "
+            f"F1={metrics['class_f1'][c]:.2f}%")
+    print("\n")
+    log_msg = '\n'.join(log_msg)
+    return log_msg

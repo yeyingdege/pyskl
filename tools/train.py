@@ -22,9 +22,11 @@ from pyskl.utils import collect_env, get_root_logger, mc_off, mc_on, test_port
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a recognizer')
     parser.add_argument('config', help='train config file path')
+    # parser.add_argument('--config', default='configs/stgcn++/stgcn++_dtc_v2_yolo11/j_mult_label.py')
     parser.add_argument(
         '--validate',
         action='store_true',
+        # default=True,
         help='whether to evaluate the checkpoint during training')
     parser.add_argument(
         '--test-last',
@@ -53,6 +55,10 @@ def parse_args():
     args = parser.parse_args()
     if 'LOCAL_RANK' not in os.environ:
         os.environ['LOCAL_RANK'] = str(args.local_rank)
+        # os.environ['RANK'] = '0'
+        # os.environ['WORLD_SIZE'] = '1'
+        # os.environ['MASTER_ADDR'] = 'localhost'
+        # os.environ['MASTER_PORT'] = '29500'
 
     return args
 

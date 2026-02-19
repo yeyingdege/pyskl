@@ -15,6 +15,7 @@ from ultralytics import YOLO
 import cv2
 
 from pyskl.apis import inference_recognizer, init_recognizer
+from pyskl.utils.yolo_utils import write_video
 
 try:
     from mmdet.apis import inference_detector, init_detector
@@ -93,16 +94,6 @@ def parse_args():
         help='specify the short-side length of the image')
     args = parser.parse_args()
     return args
-
-
-def write_video(frames, out_filename, fps=24):
-    if isinstance(frames, str):
-        filenames = os.listdir(frames)
-        filenames = sorted(filenames, key=lambda x: int(x.split('_')[-1].split('.')[0]))
-        frames = [cv2.imread(osp.join(frames, f)) for f in filenames]
-    vid = mpy.ImageSequenceClip([x[:, :, ::-1] for x in frames], fps=fps)
-    vid.write_videofile(out_filename, remove_temp=True)
-    return vid
 
 
 def frame_extraction(video_path, short_side):

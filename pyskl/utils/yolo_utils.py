@@ -1,8 +1,7 @@
 import os
 import cv2
 from ultralytics import YOLO
-from demo.my_demo import write_video
-
+import moviepy as mpy
 
 # COCO keypoint skeleton (pairs of keypoint indices)
 # Index order: [0:nose, 1:left_eye, 2:right_eye, 3:left_ear, 4:right_ear,
@@ -29,6 +28,16 @@ CENTER_COLOR = (0, 255, 0)    # Green for center/nose
 LEFT_SKELETON_COLOR = (0, 200, 200)
 RIGHT_SKELETON_COLOR = (200, 0, 200)
 CENTER_SKELETON_COLOR = (150, 200, 0)
+
+
+def write_video(frames, out_filename, fps=24):
+    if isinstance(frames, str):
+        filenames = os.listdir(frames)
+        filenames = sorted(filenames, key=lambda x: int(x.split('_')[-1].split('.')[0]))
+        frames = [cv2.imread(os.path.join(frames, f)) for f in filenames]
+    vid = mpy.ImageSequenceClip([x[:, :, ::-1] for x in frames], fps=fps)
+    vid.write_videofile(out_filename, remove_temp=True)
+    return vid
 
 
 def run_demo(yolo_path=".cache/yolo11m-pose.pt", video="demo/ntu_sample.avi"):

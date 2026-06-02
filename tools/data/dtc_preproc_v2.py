@@ -19,12 +19,12 @@ def parse_args():
     parser.add_argument('--video_dir', type=str, default='data/DTC/AI-videos-selective-Sep30')
     # parser.add_argument('--multi_label', action='store_true', help='multi-label classification')
     parser.add_argument('--multi_label', default=True, help='multi-label classification')
-    parser.add_argument('--out_dir', default='data/DTC/multi-label-seg', help='multi-label skeleton dataset')
+    parser.add_argument('--out_dir', default='data/DTC/multi-label-seg3-feb19', help='multi-label skeleton dataset')
     parser.add_argument('--seed', type=int, default=0, help='random seed for data split')
     parser.add_argument('--keep_labels', nargs='+', type=str, 
                         default=['fall', 'hit', 'kick', 'run', 'throw'])
     parser.add_argument('--label_map', type=str, default='tools/data/label_map/dtc7.txt')
-    parser.add_argument('--annotation_dir', type=str, default='data/DTC/annotations_1.0_1764299882239', help='directory of annotation json files')
+    parser.add_argument('--annotation_dir', type=str, default='data/DTC/annotations_upto_feb19', help='directory of annotation json files')
     parser.add_argument('--frame_thres', type=int, default=30, help='minimum frames for a valid video segment')
     parser.add_argument('--min_action_frames', type=int, default=15, help='minimum action overlap frames for multi-label segmentation')
     parser.add_argument('--segment_duration', type=float, default=5.0, help='duration (in seconds)')
@@ -39,6 +39,7 @@ def read_single_annotation(file_path, label_to_id, frame_thres=10, multi_label=F
     frame_dir = ann.get('frame_dir', '')
     # change directory to local directory
     frame_dir = frame_dir.replace('/data/dtc/dataset/Sep30/AI-videos-selective', 'data/DTC/AI-videos-selective-Sep30')
+    frame_dir = frame_dir.replace('/data/dtc/dataset/', 'data/DTC/')
     filename = frame_dir.split('/')[-1]
     annotation = ann.get('annotation', [])
     new_anns = []
@@ -91,6 +92,7 @@ def read_single_annotation_multi_label(file_path, label_to_id, segment_duration,
     frame_dir = ann.get('frame_dir', '')
     # change directory to local directory
     frame_dir = frame_dir.replace('/data/dtc/dataset/Sep30/AI-videos-selective', 'data/DTC/AI-videos-selective-Sep30')
+    frame_dir = frame_dir.replace('/data/dtc/dataset/', 'data/DTC/')
     filename = frame_dir.split('/')[-1]
     annotation = ann.get('annotation', [])
     new_anns = []

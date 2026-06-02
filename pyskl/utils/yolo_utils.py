@@ -48,6 +48,41 @@ def run_demo(yolo_path=".cache/yolo11m-pose.pt", video="demo/ntu_sample.avi"):
     return results
 
 
+def draw_skeleton(frame, kpts_xy, kpts_conf, keypoint_thr=0.1):
+    # Draw keypoints with different colors for left/right
+    for idx, ((x, y), conf) in enumerate(zip(kpts_xy, kpts_conf)):
+        if conf > keypoint_thr:  # only draw confident keypoints
+            # Choose color based on keypoint position
+            if idx in LEFT_KEYPOINTS:
+                color = LEFT_COLOR
+            elif idx in RIGHT_KEYPOINTS:
+                color = RIGHT_COLOR
+            elif idx in CENTER_KEYPOINTS:
+                color = CENTER_COLOR
+            else:
+                color = (255, 255, 255)  # white for undefined
+            
+            cv2.circle(frame, (int(x), int(y)), 6, color, -1)
+
+    # Draw skeleton connections with colored lines
+    for i, j in SKELETON:
+        if kpts_conf[i] > keypoint_thr and kpts_conf[j] > keypoint_thr:
+            pt1 = (int(kpts_xy[i][0]), int(kpts_xy[i][1]))
+            pt2 = (int(kpts_xy[j][0]), int(kpts_xy[j][1]))
+            
+            # Determine line color based on connection type
+            if i in LEFT_KEYPOINTS and j in LEFT_KEYPOINTS:
+                line_color = LEFT_SKELETON_COLOR
+            elif i in RIGHT_KEYPOINTS and j in RIGHT_KEYPOINTS:
+                line_color = RIGHT_SKELETON_COLOR
+            else:
+                # Mixed or center connection
+                line_color = CENTER_SKELETON_COLOR
+            
+            cv2.line(frame, pt1, pt2, line_color, 2)
+    return frame
+
+
 def visualize_results(results, out_file="yolo11m-pose_demo.mp4", action_label='', fps=24, keypoint_thr=0.1):
     vis_frames = []
     for frame_id, result in enumerate(results):
@@ -83,36 +118,7 @@ def visualize_results(results, out_file="yolo11m-pose_demo.mp4", action_label=''
                 #         cv2.line(frame, pt1, pt2, (255, 150, 0), 2)
 
                 # Draw keypoints with different colors for left/right
-                for idx, ((x, y), conf) in enumerate(zip(kpts_xy, kpts_conf)):
-                    if conf > keypoint_thr:  # only draw confident keypoints
-                        # Choose color based on keypoint position
-                        if idx in LEFT_KEYPOINTS:
-                            color = LEFT_COLOR
-                        elif idx in RIGHT_KEYPOINTS:
-                            color = RIGHT_COLOR
-                        elif idx in CENTER_KEYPOINTS:
-                            color = CENTER_COLOR
-                        else:
-                            color = (255, 255, 255)  # white for undefined
-                        
-                        cv2.circle(frame, (int(x), int(y)), 6, color, -1)
-
-                # Draw skeleton connections with colored lines
-                for i, j in SKELETON:
-                    if kpts_conf[i] > keypoint_thr and kpts_conf[j] > keypoint_thr:
-                        pt1 = (int(kpts_xy[i][0]), int(kpts_xy[i][1]))
-                        pt2 = (int(kpts_xy[j][0]), int(kpts_xy[j][1]))
-                        
-                        # Determine line color based on connection type
-                        if i in LEFT_KEYPOINTS and j in LEFT_KEYPOINTS:
-                            line_color = LEFT_SKELETON_COLOR
-                        elif i in RIGHT_KEYPOINTS and j in RIGHT_KEYPOINTS:
-                            line_color = RIGHT_SKELETON_COLOR
-                        else:
-                            # Mixed or center connection
-                            line_color = CENTER_SKELETON_COLOR
-                        
-                        cv2.line(frame, pt1, pt2, line_color, 2)
+                frame = draw_skeleton(frame, kpts_xy, kpts_conf, keypoint_thr=keypoint_thr)
 
         if action_label != '':
             cv2.putText(frame, action_label, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)

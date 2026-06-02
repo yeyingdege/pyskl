@@ -6,14 +6,16 @@ seed = 1234 # 0, 10, 21, 111, 1234
 segment_duration = 5.0
 overlap_duration = 0.0
 # work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label/j_ml{int(multi_label)}_seed{seed}'
-work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3-feb19/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
+work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
 # work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3_linear_prob/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
+# work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3_partial_ft/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_gcn4_seed{seed}'
+# work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3-feb19_partial_ft/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_gcn4_seed{seed}'
 
 # ann_file = f"data/DTC/multi-label/dtc{num_classes}_ml{int(multi_label)}_seed{seed}.pkl"
-# ann_file = f"data/DTC/multi-label-seg3/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
-ann_file = f"data/DTC/multi-label-seg3-feb19/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
+ann_file = f"data/DTC/multi-label-seg3/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
+# ann_file = f"data/DTC/multi-label-seg3-feb19/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
 
-linear_prob = False
+linear_prob = True
 load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
 load_from_strict = False
 dataset_type = 'PoseDataset'

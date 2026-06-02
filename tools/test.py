@@ -39,7 +39,8 @@ def parse_args():
         '--eval',
         type=str,
         nargs='+',
-        default=['top_k_accuracy', 'mean_class_accuracy'],
+        # default=['top_k_accuracy', 'mean_class_accuracy'],
+        default=['f1'],
         help='evaluation metrics, which depends on the dataset, e.g.,'
         ' "top_k_accuracy", "mean_class_accuracy" for video dataset')
     parser.add_argument(

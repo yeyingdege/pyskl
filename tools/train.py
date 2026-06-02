@@ -168,3 +168,8 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # from pyskl.utils.misc import random_assign_videos
+    # random_assign_videos(video_dir="data/DTC/Feb19", 
+    #                      keep_labels=['fall', 'hit', 'run', 'throw', 'kick', 'sit'], 
+    #                      save_file='output/assigned_videos.csv',
+    #                      persons=['chenyi', 'chiatpin', 'landy', 'yanghong'], seed=0)

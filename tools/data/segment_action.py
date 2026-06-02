@@ -90,15 +90,22 @@ def segment_actions_by_duration(
     while current_start_frame < video_end_frame:
         current_end_frame = current_start_frame + segment_frames
         remaining_frames = video_end_frame - current_start_frame
+        is_last_segment = False
         
         # Check if we should discard or pad this segment
         if remaining_frames < min_segment_frames:
             # Discard: not enough frames left
             break
         elif remaining_frames < segment_frames:
-            # Pad: we have enough frames (>= min_segment_frames) but less than full segment
+            # Pad to action end or full segment, whichever is appropriate
             current_end_frame = min(current_start_frame + segment_frames, total_frames)
+            curr_seg_duration_frames = current_end_frame - current_start_frame
             is_padded = True
+            is_last_segment = True  # Always the last segment in this branch
+            if curr_seg_duration_frames < segment_frames:
+                # Near end of video — shift start back to maintain full segment length
+                current_start_frame = max(0, current_end_frame - segment_frames)
+                current_end_frame = current_start_frame + segment_frames  # Recalculate after shift
         else:
             # Normal segment
             is_padded = False
@@ -149,6 +156,10 @@ def segment_actions_by_duration(
             segments.append(segment)
             segment_id += 1
         
+        # Break AFTER the segment has been processed and appended
+        if is_last_segment:
+            break
+
         # Move to next segment
         current_start_frame += stride_frames
     
@@ -208,15 +219,22 @@ def segment_actions_by_duration_v2(
         while current_start_frame < action_end:
             current_end_frame = current_start_frame + segment_frames
             remaining_frames = action_end - current_start_frame
-            
+            is_last_segment = False
+
             # Handle short remaining segments
             if remaining_frames < min_segment_frames:
                 # Discard: not enough frames left
                 break
             elif remaining_frames < segment_frames:
                 # Pad to action end or full segment, whichever is appropriate
-                current_end_frame = min(current_start_frame + segment_frames,  total_frames)
+                current_end_frame = min(current_start_frame + segment_frames, total_frames)
+                curr_seg_duration_frames = current_end_frame - current_start_frame
                 is_padded = True
+                is_last_segment = True  # Always the last segment in this branch
+                if curr_seg_duration_frames < segment_frames:
+                    # Near end of video — shift start back to maintain full segment length
+                    current_start_frame = max(0, current_end_frame - segment_frames)
+                    current_end_frame = current_start_frame + segment_frames  # Recalculate after shift
             else:
                 # Normal segment
                 current_end_frame = min(current_end_frame, total_frames)
@@ -265,6 +283,10 @@ def segment_actions_by_duration_v2(
                 
                 segments.append(segment)
                 segment_id += 1
+
+            # Break AFTER the segment has been processed and appended
+            if is_last_segment:
+                break
             
             # Move to next segment with stride
             current_start_frame += stride_frames

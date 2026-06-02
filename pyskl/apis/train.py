@@ -141,6 +141,17 @@ def train_model(model,
         cfg.load_from = cache_checkpoint(cfg.load_from)
         runner.load_checkpoint(cfg.load_from)
 
+    if cfg.get('linear_prob', False):
+        for name, param in model.module.named_parameters():
+            param.requires_grad = False
+            if 'backbone.gcn.9' in name or 'cls_head' in name or 'backbone.gcn.8' in name \
+                or 'backbone.gcn.7' in name or 'backbone.gcn.6' in name or 'backbone.gcn.5' in name \
+                or 'backbone.gcn.4' in name:
+                param.requires_grad = True
+
+        for name, param in model.named_parameters():
+            print(f"{name} is {'trainable' if param.requires_grad else 'frozen'}")
+
     runner.run(data_loaders, cfg.workflow, cfg.total_epochs)
 
     dist.barrier()

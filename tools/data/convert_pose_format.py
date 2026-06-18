@@ -14,7 +14,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Extract keypoints dataset from videos and annotations')
     parser.add_argument('--video_dir', type=str, default='data/DTC/AI-videos-selective-Sep30')
-    parser.add_argument('--out_dir', default='data/gen-yolo-pose3d', help='keypoints extracted by yolo')
+    parser.add_argument('--out_dir', default='data/gen-yolo-pose3d-0.4', help='keypoints extracted by yolo')
     parser.add_argument('--seed', type=int, default=0, help='random seed for data split')
     parser.add_argument('--label_map', type=str, default='tools/data/label_map/dtc7.txt')
     parser.add_argument('--annotation_dir', type=str, default='data/DTC/annotations_upto_feb19', help='directory of annotation json files')
@@ -310,12 +310,12 @@ def convert_to_coco_format(kpts, kpt_score, kpt_score_thr=0.8):
     return coco_kpts
 
 
-def convert_to_yolo_format(kpts, kpt_score, bbox, width, height, kpt_score_thr=0.8):
+def convert_to_yolo_format(kpts, kpt_score, bbox, width, height, kpt_score_thr=0.4):
     row = [0]
     yolo_kpts = []
     for i in range(len(kpts)):
         if kpt_score[i] < kpt_score_thr:
-            yolo_kpts.extend([0, 0, 0]) # not labeled
+            yolo_kpts.extend([kpts[i][0] / width, kpts[i][1] / height, 0]) # not labeled
         else:
             # yolo_kpts.extend([kpts[i][0] / width, kpts[i][1] / height])
             yolo_kpts.extend([kpts[i][0] / width, kpts[i][1] / height, kpt_score[i]])

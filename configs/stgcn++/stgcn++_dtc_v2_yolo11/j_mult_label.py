@@ -6,15 +6,18 @@ seed = 1234 # 0, 10, 21, 111, 1234
 segment_duration = 5.0
 overlap_duration = 0.0
 # work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label/j_ml{int(multi_label)}_seed{seed}'
-work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3-feb19/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
+# work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3-feb19/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
 # work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3_linear_prob/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
+work_dir = f'./work_dirs/stgcn++/stgcn++_dtc_multi-label-knk1/j_cl{clip_len}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}'
 
 # ann_file = f"data/DTC/multi-label/dtc{num_classes}_ml{int(multi_label)}_seed{seed}.pkl"
 # ann_file = f"data/DTC/multi-label-seg3/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
-ann_file = f"data/DTC/multi-label-seg3-feb19/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
+# ann_file = f"data/DTC/multi-label-seg3-feb19/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}.pkl"
+ann_file = f"data/DTC/multi-label-knk1/dtc{num_classes}_ml{int(multi_label)}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}_stratified.pkl"
 
 linear_prob = False
-load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
+# load_from = 'http://download.openmmlab.com/mmaction/pyskl/ckpt/stgcnpp/stgcnpp_ntu120_xsub_hrnet/j.pth'
+load_from = 'work_dirs/stgcn++/stgcn++_dtc_multi-label-seg3-feb19/j_cl100_ml1_t5.0_ovlp0.0_seed10/best_mean_f1_epoch_16.pth'
 load_from_strict = False
 dataset_type = 'PoseDataset'
 
@@ -97,9 +100,9 @@ optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0005, nestero
 optimizer_config = dict(grad_clip=None)
 # learning policy
 lr_config = dict(policy='CosineAnnealing', min_lr=0, by_epoch=False)
-total_epochs = 20
+total_epochs = 10 # default 20
 checkpoint_config = dict(interval=1)
-evaluation = dict(interval=1, metrics=['f1'], rule='greater', save_best='mean_f1') # 'recall', 'f1'
+evaluation = dict(interval=1, metrics=['f1'], rule='greater', save_best='mean_f1') # 'recall', 'f1', 'mean_f1'
 log_config = dict(interval=100, hooks=[dict(type='TextLoggerHook')])
 
 # runtime settings

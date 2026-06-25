@@ -2,10 +2,6 @@
 
 > Note: This repo is currently not maintained by the developer. Feel free to create forks and develop based on this piece of codes.
 
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/revisiting-skeleton-based-action-recognition/skeleton-based-action-recognition-on-ntu-rgbd)](https://paperswithcode.com/sota/skeleton-based-action-recognition-on-ntu-rgbd?p=revisiting-skeleton-based-action-recognition)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/dg-stgcn-dynamic-spatial-temporal-modeling/skeleton-based-action-recognition-on-ntu-rgbd-1)](https://paperswithcode.com/sota/skeleton-based-action-recognition-on-ntu-rgbd-1?p=dg-stgcn-dynamic-spatial-temporal-modeling)
-[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/revisiting-skeleton-based-action-recognition/skeleton-based-action-recognition-on-kinetics)](https://paperswithcode.com/sota/skeleton-based-action-recognition-on-kinetics?p=revisiting-skeleton-based-action-recognition)
-[[**Report**]](https://arxiv.org/abs/2205.09443)
 
 PYSKL is a toolbox focusing on action recognition based on **SK**e**L**eton data with **PY**Torch. Various algorithms will be supported for skeleton-based action recognition. We build this project based on the OpenSource Project [MMAction2](https://github.com/open-mmlab/mmaction2).
 
@@ -18,14 +14,6 @@ This repo is the official implementation of [PoseConv3D](https://arxiv.org/abs/2
   <p style="font-size:1.2vw;">Left: Skeleton-base Action Recognition Results on NTU-RGB+D-120; Right: CPU Realtime Skeleton-base Gesture Recognition Results</p>
 </figure>
 </div>
-
-## Change Log
-
-- Improve skeleton extraction script ([PR](https://github.com/kennymckormick/pyskl/pull/150)). Now it supports non-distributed skeleton extraction and k400-style (**2023-03-20**).
-- Support PyTorch 2.0: when set `--compile` for training/testing scripts and with `torch.__version__ >= 'v2.0.0'` detected, will use `torch.compile` to compile the model before training/testing. Experimental Feature, absolutely no performance warranty (**2023-03-16**).
-- Provide a real-time gesture recognition demo based on skeleton-based action recognition with ST-GCN++, check [Demo](/demo/demo.md) for more details and instructions (**2023-02-10**).
-- Provide [scripts](/examples/inference_speed.ipynb) to estimate the inference speed of each model (**2022-12-30**).
-- Support [RGBPoseConv3D](https://arxiv.org/abs/2104.13586), a two-stream 3D-CNN for action recognition based on RGB & Human Skeleton. Follow the [guide](/configs/rgbpose_conv3d/README.md) to train and test RGBPoseConv3D on NTURGB+D （**2022-12-29**).
 
 ## Supported Algorithms
 
@@ -74,13 +62,93 @@ Check [demo.md](/demo/demo.md).
 
 ## Data Preparation
 
-We provide HRNet 2D skeletons for every dataset we supported and Kinect 3D skeletons for the NTURGB+D and NTURGB+D 120 dataset. To obtain the human skeleton annotations, you can:
+We provide HRNet 2D skeletons for every dataset we support and Kinect 3D skeletons for NTURGB+D/NTURGB+D 120. To prepare skeleton annotations:
 
-1. Use our pre-processed skeleton annotations: we directly provide the processed skeleton data for all datasets as pickle files (which can be directly used for training and testing), check [Data Doc](/tools/data/README.md) for the download links and descriptions of the annotation format.
-2. For NTURGB+D 3D skeletons, you can download the official annotations from https://github.com/shahroudy/NTURGB-D, and use our [provided script](/tools/data/ntu_preproc.py) to generate the processed pickle files. The generated files are the same with the provided `ntu60_3danno.pkl` and `ntu120_3danno.pkl`. For detailed instructions, follow the [Data Doc](/tools/data/README.md).
-3. We also provide scripts to extract 2D HRNet skeletons from RGB videos, you can follow the [diving48_example](/examples/extract_diving48_skeleton/diving48_example.ipynb) to extract 2D skeletons from an arbitrary RGB video dataset.
+1. Use pre-processed skeleton annotations: processed pickle files for supported datasets are described in [Data Doc](/tools/data/README.md).
+2. For NTURGB+D 3D skeletons, download official annotations from https://github.com/shahroudy/NTURGB-D and run [tools/data/ntu_preproc.py](/tools/data/ntu_preproc.py) to generate `ntu60_3danno.pkl` and `ntu120_3danno.pkl`.
+3. For custom RGB datasets, extract 2D poses first (for example, see [diving48_example](/examples/extract_diving48_skeleton/diving48_example.ipynb)).
 
-You can use [vis_skeleton](/demo/vis_skeleton.ipynb) to visualize the provided skeleton data.
+### DTC multi-label preprocessing (tools/data/dtc_preproc_v2.py)
+
+The script [tools/data/dtc_preproc_v2.py](/tools/data/dtc_preproc_v2.py) converts per-video JSON pose annotations into a PySKL training pickle with train/val splits.
+
+Expected inputs:
+
+- `--annotation_dir`: directory of JSON annotation files (default: `data/DTC/annotations_1.0_knk_1`).
+- `--label_map`: label text file used to map class names to IDs (default: `tools/data/label_map/dtc7.txt`).
+- Each JSON file should contain per-person pose/keypoint/action annotations compatible with this script.
+
+What the script does:
+
+- Builds a stratified train/val split at file level (`--train_ratio`, default `0.6`) using label presence.
+- Generates multi-label temporal segments per person:
+  - Train split uses action-aligned windows.
+  - Val split uses fixed window/stride segmentation.
+- Filters segments shorter than `--frame_thres` (default `30`) and applies minimum action-overlap frames with `--min_action_frames` (default `15`).
+- Saves a pickle with:
+  - `split`: `train`/`val` sample IDs.
+  - `annotations`: pose samples (`keypoint`, `keypoint_score`, `label`, `total_frames`, etc.).
+
+Example:
+
+```shell
+python tools/data/dtc_preproc_v2.py \
+  --annotation_dir data/DTC/annotations_1.0_knk_1 \
+  --label_map tools/data/label_map/dtc7.txt \
+  --out_dir data/DTC/multi-label-knk1 \
+  --segment_duration 5.0 \
+  --overlap_duration 0.0 \
+  --frame_thres 30 \
+  --min_action_frames 15 \
+  --train_ratio 0.6 \
+  --seed 0
+```
+
+Output file pattern:
+
+```text
+{out_dir}/dtc{num_labels}_ml{0|1}_t{segment_duration}_ovlp{overlap_duration}_seed{seed}_stratified.pkl
+```
+
+Example output path with defaults:
+
+```text
+data/DTC/multi-label-knk1/dtc7_ml1_t5.0_ovlp0.0_seed0_stratified.pkl
+```
+
+## Config: STGCN++ DTC v2 (YOLO11, multi-label)
+
+Reference config:
+
+`configs/stgcn++/stgcn++_dtc_v2_yolo11/j_mult_label.py`
+
+Key configuration values used in this setup:
+
+- `multi_label=True`
+- `num_classes=7`
+- `clip_len=100`
+- `seed=0`
+- `segment_duration=5.0`
+- `overlap_duration=0.0`
+- `dataset_type='PoseDataset'`
+- `ann_file=data/DTC/multi-label-knk1/dtc7_ml1_t5.0_ovlp0.0_seed0_stratified.pkl`
+- `work_dir=./work_dirs/stgcn++/stgcn++_dtc_multi-label-knk1/j_cl100_ml1_t5.0_ovlp0.0_seed0`
+
+Model and training details:
+
+- Model: `RecognizerGCN` with `STGCN` backbone (`gcn_adaptive='init'`, `gcn_with_res=True`, `tcn_type='mstcn'`, `graph_cfg(layout='coco', mode='spatial')`)
+- Head: `GCNHead(in_channels=256, num_classes=7)`
+- Multi-label loss: `BCELossWithLogits`
+- Test-time clip aggregation: `average_clips='sigmoid'`
+- Data: `RepeatDataset(times=5)` for training, `multi_class=True`, `num_classes=7`
+- Batch/loader: `videos_per_gpu=16`, `workers_per_gpu=2`, `test_dataloader(videos_per_gpu=1)`
+- Optimizer: `SGD(lr=0.01, momentum=0.9, weight_decay=5e-4, nesterov=True)`
+- LR schedule: `CosineAnnealing` (`by_epoch=False`, `min_lr=0`)
+- Epochs: `total_epochs=20 for full finetuning on large AI generated dataset; 10 for finetuning on real-world dataset if the dataset is small`
+- Evaluation: every epoch with `metrics=['f1']`, save best by `mean_f1`
+
+
+<!-- You can use [vis_skeleton](/demo/vis_skeleton.ipynb) to visualize the provided skeleton data. -->
 
 ## Training & Testing
 
@@ -91,28 +159,33 @@ bash tools/dist_train.sh {config_name} {num_gpus} {other_options}
 # Testing
 bash tools/dist_test.sh {config_name} {checkpoint} {num_gpus} --out {output_file} --eval top_k_accuracy mean_class_accuracy
 ```
-For specific examples, please go to the README for each specific algorithm we supported.
-
-## Citation
-
-If you use PYSKL in your research or wish to refer to the baseline results published in the Model Zoo, please use the following BibTeX entry and the BibTex entry corresponding to the specific algorithm you used.
-
-```BibTeX
-@inproceedings{duan2022pyskl,
-  title={Pyskl: Towards good practices for skeleton action recognition},
-  author={Duan, Haodong and Wang, Jiaqi and Chen, Kai and Lin, Dahua},
-  booktitle={Proceedings of the 30th ACM International Conference on Multimedia},
-  pages={7351--7354},
-  year={2022}
-}
+Examples,
+```shell
+bash tools/dist_train.sh configs/stgcn++/stgcn++_dtc_v2_yolo11/j_mult_label.py 1 --validate --test-best
+bash tools/dist_test.sh configs/stgcn++/stgcn++_dtc_v2_yolo11/j_mult_label.py \
+  work_dirs/stgcn++/stgcn++_dtc_multi-label-knk1/j_cl100_ml1_t5.0_ovlp0.0_seed0/best_mean_f1_epoch_*.pth \
+  1 --out output/dtc_stgcnpp_eval.pkl --eval f1
 ```
 
-## Contributing
+## Finetune YOLO
+### Data Processing
+Convert DTC annotation style files into YOLO data format:
+```
+python tools/data/convert_pose_format.py
+```
+This will create a data folder with the following file structure
+```
+dataset_root/
+ ├── images/
+ │    ├── train/
+ │    └── val/
+ ├── labels/
+ │    ├── train/
+ │    └── val/
+``` 
+The user need to create a data.yaml file under dataset_root. The yaml template can be found at [dataset guide](https://docs.ultralytics.com/datasets/pose#supported-dataset-formats)
 
-PYSKL is an OpenSource Project under the Apache2 license. Any contribution from the community to improve PYSKL is appreciated. For **significant** contributions (like supporting a novel & important task), a corresponding part will be added to our updated tech report, while the contributor will also be added to the author list.
-
-Any user can open a PR to contribute to PYSKL. The PR will be reviewed before being merged into the master branch. If you want to open a **large** PR in PYSKL, you are recommended to first reach me (via my email dhd.efz@gmail.com) to discuss the design, which helps to save large amounts of time in the reviewing stage.
-
-## Contact
-
-For any questions, feel free to contact: dhd.efz@gmail.com
+### Finetune
+```
+python tools/finetune_yolo.py
+```
